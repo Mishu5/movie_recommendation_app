@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+venv/
+.env
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+*.log
+
+# Frontend build
+/build
+
+# Docker
+*.env
+db-data/
+
+# Sys
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+
+# log and tmp
+*.log
+*.bak
+*.tmp
+
+# Cache
+.cache/
+*.lock
