@@ -1,6 +1,11 @@
 from flask import Flask, jsonify
+from db.create_tables import create_tables
+from db.add_user import add_user
+import os
 
 app = Flask(__name__)
+
+create_tables()
 
 @app.route('/')
 def hello_world():
