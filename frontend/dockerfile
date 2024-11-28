@@ -1,6 +1,8 @@
-FROM node:16
+FROM node:18
 WORKDIR /app
-COPY package.json .
-RUN npm install
+RUN npm install -g expo-cli
+COPY package.json yarn.lock ./
+RUN yarn install
 COPY . .
-CMD ["npm", "start"]
+EXPOSE 19000 19001 19002
+CMD ["npx", "expo", "start", "--web"]
