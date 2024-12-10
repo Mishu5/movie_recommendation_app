@@ -21,8 +21,9 @@ def add_user(email, password):
         session.add(new_user)
         session.commit()
         print(f"User {email} added.")
-    except IntegrityError:
+    except Exception as e:
         session.rollback()
+        print(f"Error adding user: {e}")
     finally:
         session.close()
     return True
