@@ -10,6 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String, unique=True, nullable=False)
     password = Column(String, nullable=False)
+    
     preferences = relationship("UserPreference", back_populates="user")
 
 
@@ -25,6 +26,7 @@ class Media(Base):
     endYear = Column(Integer, nullable=True)  # Year the series ended (nullable for non-TV titles)
     runtimeMinutes = Column(Integer, nullable=True)  # Duration in minutes
     genres = Column(ARRAY(String))  # Comma-separated string of genres
+
     preferences = relationship("UserPreference", back_populates="media")
 
 class UserPreference(Base):
@@ -34,5 +36,6 @@ class UserPreference(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Foreign key to User
     media_id = Column(String, ForeignKey('medias.tconst'), nullable=False)  # Foreign key to Media
     rating = Column(Integer, nullable=False)
+
     user = relationship("User", back_populates="preferences")
     media = relationship("Media", back_populates="preferences")

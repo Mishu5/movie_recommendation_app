@@ -42,3 +42,19 @@ def add_media(tconst, titleType, primaryTitle, originalTitle, isAdult, startYear
         print(f"Error adding media: {e}")
     finally:
         session.close()
+
+def get_media_by_tconst(tconst):
+    session = Session()
+    media = session.query(Media).filter(Media.tconst == tconst).first()
+    session.close()
+    return media
+
+def get_all_genres():
+    session = Session()
+    genres = session.query(Media.genres).all()
+    session.close()
+    distinct_genres = set()
+    for genre in genres:
+        for g in genre.genres:
+            distinct_genres.add(g)
+    return distinct_genres

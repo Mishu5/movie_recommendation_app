@@ -5,6 +5,7 @@ import os
 import jwt
 import datetime
 import hashlib
+from db.media import get_all_genres
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
