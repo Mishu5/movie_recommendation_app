@@ -5,7 +5,9 @@ import os
 import jwt
 import datetime
 import hashlib
+
 from db.media import get_all_genres
+from recommendation.knn_recommendation import get_media_features
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -64,4 +66,5 @@ def login():
 if __name__ == '__main__':
     create_tables()
     check_and_add_media()
+    media_features, media_ids = get_media_features()
     app.run(host='0.0.0.0', port=5000)
