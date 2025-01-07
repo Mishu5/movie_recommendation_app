@@ -14,6 +14,12 @@ def get_all_media():
     session.close()
     return media
 
+def check_media():
+    session = Session()
+    media_count = session.query(Media).count()
+    session.close()
+    return media_count
+
 def add_media(tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres):
     new_media = Media(
         tconst=tconst,
