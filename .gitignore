@@ -43,3 +43,6 @@ Thumbs.db
 
 # Data
 *.tsv
+
+# Backup
+backup/
