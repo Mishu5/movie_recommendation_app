@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from db.create_tables import create_tables, check_and_add_media
+from db.create_tables import create_tables, check_and_add_media, check_and_add_reviews
 from db.users import add_user, get_user
 import os
 import jwt
@@ -66,5 +66,6 @@ def login():
 if __name__ == '__main__':
     create_tables()
     check_and_add_media()
-    media_features, media_ids = get_media_features()
+    check_and_add_reviews()
+    #media_features, media_ids = get_media_features()
     app.run(host='0.0.0.0', port=5000)

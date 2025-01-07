@@ -20,6 +20,12 @@ def check_media():
     session.close()
     return media_count
 
+def check_reviews():
+    session = Session()
+    review_check = session.query(Media.numVotes).first()
+    session.close()
+    return review_check
+
 def add_media(tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres):
     new_media = Media(
         tconst=tconst,
@@ -65,3 +71,12 @@ def get_media_page(page, page_size):
     media = session.query(Media).offset(offset).limit(page_size).all()
     session.close()
     return media
+
+def add_review(tconst, rating, numVotes):
+    session = Session()
+    media = session.query(Media).filter(Media.tconst == tconst).first()
+    media.averageRating = rating
+    media.numVotes = numVotes
+    session.commit()
+    session.close()
+    

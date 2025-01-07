@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ARRAY, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, ARRAY, ForeignKey, Double
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -26,6 +26,8 @@ class Media(Base):
     endYear = Column(Integer, nullable=True)  # Year the series ended (nullable for non-TV titles)
     runtimeMinutes = Column(Integer, nullable=True)  # Duration in minutes
     genres = Column(ARRAY(String))  # Comma-separated string of genres
+    averageRating = Column(Double, nullable=True)  # Average rating of the title
+    numVotes = Column(Integer, nullable=True)  # Number of votes the title has received
 
     preferences = relationship("UserPreference", back_populates="media")
 

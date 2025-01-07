@@ -58,3 +58,14 @@ def get_media_features():
     save_to_cache(media_features, media_ids, all_genres, genre_index)
 
     return media_features, media_ids
+
+def train_knn(media_features):
+    knn = NearestNeighbors(n_neighbors=5, metric='auto')
+    knn.fit(media_features)
+    return knn
+
+def recommend_media(user_id, k=5):
+    user_preferences = db.user_preferences.get_user_preferences(user_id)
+    #add if nothing in user_preferences
+
+    
