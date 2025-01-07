@@ -58,3 +58,10 @@ def get_all_genres():
         for g in genre.genres:
             distinct_genres.add(g)
     return distinct_genres
+
+def get_media_page(page, page_size):
+    offset = page * page_size
+    session = Session()
+    media = session.query(Media).offset(offset).limit(page_size).all()
+    session.close()
+    return media
