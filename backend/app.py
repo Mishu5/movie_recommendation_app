@@ -68,6 +68,4 @@ if __name__ == '__main__':
     check_and_add_media()
     check_and_add_reviews()
     media_features, media_ids = get_media_features()
-    for x in range(0, 10):
-        print(media_features[x])
     app.run(host='0.0.0.0', port=5000)

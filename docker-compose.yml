@@ -5,6 +5,8 @@ services:
       context: ./backend
     ports:
       - "5000:5000"
+    volumes:
+      - cache-data:/app/cache
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
       - SECRET_KEY=secret_key
@@ -39,4 +41,5 @@ services:
       
 volumes:
   db-data:
+  cache-data:
   

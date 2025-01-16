@@ -2,17 +2,23 @@ import numpy as np
 import pickle
 import os
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import StandardScaler
 from db.models import Media, User, UserPreference
 import db.users
 import db.media
 import db.user_preferences
 
-CACHE_FILE = 'media_features_cache.pkl'
+CACHE_FILE = '/app/cache/media_features_cache.pkl'
 PAGE_SIZE = 10000
 
 def save_to_cache(media_features, media_ids, all_genres, genre_index):
-    with open(CACHE_FILE, 'wb') as f:
-        pickle.dump((media_features, media_ids, all_genres, genre_index), f)
+    try:
+        with open(CACHE_FILE, 'wb') as f:
+            pickle.dump((media_features, media_ids, all_genres, genre_index), f)
+        print(f"Cache file saved to {CACHE_FILE}")
+    except Exception as e:
+        print(f"Error saving cache file: {e}")
+
 
 def load_from_cache():
     with open(CACHE_FILE, 'rb') as f:
@@ -29,15 +35,17 @@ def delete_cache():
 
 def get_media_features():
 
-    if os.path.exists(CACHE_FILE):
-        return load_from_cache()
-
     media_list = None
     all_genres = db.media.get_all_genres()
     genre_index = {genre: idx for idx, genre in enumerate(all_genres)}
     media_features = []
     media_ids = []
     page = 0
+
+    if os.path.exists(CACHE_FILE):
+        print(f"Loading media features from cache file {CACHE_FILE}")
+        media_features, media_ids, all_genres, genre_index = load_from_cache()
+        return media_features, media_ids
 
     while True:
 
@@ -64,13 +72,17 @@ def get_media_features():
         page += 1
 
     media_features = np.array(media_features)
+
+    # Normalizing the data
+    scaler = StandardScaler()
+    media_features = scaler.fit_transform(media_features)
+
     save_to_cache(media_features, media_ids, all_genres, genre_index)
 
     return media_features, media_ids
 
 def train_knn(media_features):
     knn = NearestNeighbors(n_neighbors=5, metric='auto')
-
     knn.fit(media_features)
     return knn
 
