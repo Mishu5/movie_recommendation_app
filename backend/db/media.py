@@ -65,10 +65,10 @@ def get_all_genres():
             distinct_genres.add(g)
     return distinct_genres
 
-def get_media_page(page, page_size):
+def get_media_page(page, page_size, min_num_votes=0):
     offset = page * page_size
     session = Session()
-    media = session.query(Media).offset(offset).limit(page_size).all()
+    media = session.query(Media).filter(Media.numVotes >= min_num_votes).offset(offset).limit(page_size).all()
     session.close()
     return media
 

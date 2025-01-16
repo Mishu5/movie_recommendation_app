@@ -19,13 +19,20 @@ def load_from_cache():
         media_features, media_ids, all_genres, genre_index = pickle.load(f)
     return media_features, media_ids, all_genres, genre_index
 
+def delete_cache():
+    if os.path.exists(CACHE_FILE):
+        os.remove(CACHE_FILE)
+        print(f"Cache file {CACHE_FILE} deleted.")
+    else:
+        print(f"Cache file {CACHE_FILE} does not exist.")
+
 
 def get_media_features():
 
     if os.path.exists(CACHE_FILE):
         return load_from_cache()
 
-    media_list = db.media.get_all_media()
+    media_list = None
     all_genres = db.media.get_all_genres()
     genre_index = {genre: idx for idx, genre in enumerate(all_genres)}
     media_features = []
@@ -34,7 +41,7 @@ def get_media_features():
 
     while True:
 
-        media_list = db.media.get_media_page(page, PAGE_SIZE)
+        media_list = db.media.get_media_page(page, PAGE_SIZE , 0) # 1 to filter out unreviewed media from the dataset
         if not media_list:
             break
 
@@ -44,6 +51,8 @@ def get_media_features():
                 media.startYear if media.startYear else 0,
                 media.endYear if media.endYear else 0,
                 media.runtimeMinutes if media.runtimeMinutes else 0,
+                media.averageRating if media.averageRating else 0,
+                media.numVotes if media.numVotes else 0
             ]
             genre_features = [0] * len(all_genres)
             for genre in media.genres:
@@ -61,6 +70,7 @@ def get_media_features():
 
 def train_knn(media_features):
     knn = NearestNeighbors(n_neighbors=5, metric='auto')
+
     knn.fit(media_features)
     return knn
 

@@ -7,7 +7,7 @@ import datetime
 import hashlib
 
 from db.media import get_all_genres
-from recommendation.knn_recommendation import get_media_features
+from recommendation.knn_recommendation import get_media_features, delete_cache
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -67,5 +67,7 @@ if __name__ == '__main__':
     create_tables()
     check_and_add_media()
     check_and_add_reviews()
-    #media_features, media_ids = get_media_features()
+    media_features, media_ids = get_media_features()
+    for x in range(0, 10):
+        print(media_features[x])
     app.run(host='0.0.0.0', port=5000)
