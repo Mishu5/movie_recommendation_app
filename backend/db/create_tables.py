@@ -22,7 +22,7 @@ def check_and_add_media():
         for row in rows_of_media:
 
             # Skiping individual episodes
-            if row['titleType'] == 'tvEpisode' or 'Episode' in row['primaryTitle']:
+            if row['titleType'] == 'tvEpisode' and 'Episode' in row['primaryTitle']:
                 continue
 
             genres = ''.join(str(row['genres'])).split(',')
@@ -43,10 +43,9 @@ def check_and_add_media():
 
 def check_and_add_reviews():
     review_check = check_reviews()
-
     if not review_check:
         print("Adding reviews...")
-        rows_of_reviews = get_media_from_tsv("title.ratings.tsv")
+        rows_of_reviews = get_media_from_tsv('title.ratings.tsv')
         for row in rows_of_reviews:
             add_review(
                 tconst = row['tconst'],
