@@ -5,10 +5,15 @@ import os
 import jwt
 import datetime
 import hashlib
+import string
+import random
+from threading import Timer
 
 from db.media import get_all_genres
 from recommendation.knn_recommendation import get_media_features, train_knn, delete_cache
 from db.user_preferences import add_and_update_user_preference, get_user_preferences
+
+rooms = {} #List of rooms that users can interact with
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -115,6 +120,64 @@ def get_preferences():
         return jsonify({"preferences": res}), 200
     else:
         return jsonify({"message": "Error fetching preferences"}), 500
+
+@app.route('/rooms/create', methods=['POST'])
+def create_room():
+    data = request.get_json()
+    token = data.get('jwt')
+    room_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k = 8)) #generating random room id
+
+    if not token:
+        return jsonify({"message": "JWT and room name are required"}), 400
+
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+    
+    if room_id in rooms:
+        return jsonify({"message": "Room already exists"}), 400
+    
+    rooms[room_id] = {
+        "creator": user_id,
+        "members": [],
+        "active": False,
+        "recommended_media": [],
+        "created_at": datetime.datetime.now(),
+    }
+
+    Timer(86400, expire_room, args=[room_id]).start()
+    return jsonify({"message": "Room created", "room_id": room_id}), 200
+
+@app.route('/rooms/join', methods=['POST'])
+def joint_room_endpoint():
+    data = request.get_json()
+    token = data.get('jwt')
+    room_id = data.get('room_id')
+    user_id = None
+
+    if not token or not room_id:
+        return jsonify({"message": "JWT and room id are required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if room_id not in rooms or rooms[room_id]["active"]:
+        return jsonify({"message": "Room does not exist or does not accept invites anymore"}), 400
+
+    if user_id in rooms[room_id]["members"]:
+        return jsonify({"message": "User is already in the room"}), 400
+    rooms[room_id]["members"].append(user_id)
+    return jsonify({"message": "User joined the room"}), 200
+
 
 if __name__ == '__main__':
     create_tables()
