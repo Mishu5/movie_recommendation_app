@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ARRAY, ForeignKey, Double
+from sqlalchemy import Column, Integer, String, Boolean, ARRAY, ForeignKey, Double, Float
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -37,7 +37,7 @@ class UserPreference(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Foreign key to User
     media_id = Column(String, ForeignKey('medias.tconst'), nullable=False)  # Foreign key to Media
-    rating = Column(Integer, nullable=False)
+    rating = Column(Float, nullable=False)
 
     user = relationship("User", back_populates="preferences")
     media = relationship("Media", back_populates="preferences")

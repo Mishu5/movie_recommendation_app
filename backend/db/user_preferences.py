@@ -14,22 +14,28 @@ def get_user_preferences(user_id):
     session.close()
     return user_preferences
 
-def add_user_preference(user_id, tconst, rating):
+def add_and_update_user_preference(user_id, tconst, rating):
     new_user_preference = UserPreference(
         user_id=user_id,
-        tconst=tconst,
+        media_id=tconst,
         rating=rating
     )
-    
+    print(new_user_preference)
     try:
         session = Session()
-        session.add(new_user_preference)
+        preference = session.query(UserPreference).filter(UserPreference.user_id == user_id, UserPreference.media_id == tconst).first()
+        if preference:
+            preference.rating = rating
+        else:
+            session.add(new_user_preference)
         session.commit()
+        session.close()
+        return True
     except Exception as e:
         session.rollback()
         print(f"Error adding user preference: {e}")
-    finally:
         session.close()
+        return False
 
 def update_user_preference(user_id, tconst, rating):
     session = Session()
