@@ -41,3 +41,11 @@ class UserPreference(Base):
 
     user = relationship("User", back_populates="preferences")
     media = relationship("Media", back_populates="preferences")
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "media_id": self.media_id,
+            "rating": self.rating
+        }

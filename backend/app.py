@@ -62,7 +62,7 @@ def login():
 
     return jsonify({"message": "Login sucessful", "jwt": token}), 200
     
-@app.route('/add_preference/add', methods=['POST'])
+@app.route('/add_preferences/add', methods=['POST'])
 def add_preference():
     data = request.get_json()
     token = data.get('jwt')
@@ -92,6 +92,29 @@ def add_preference():
     else:
         return jsonify({"message": "Error adding preference"}), 500
     
+@app.route('/preferences/get_all', methods=['GET'])
+def get_preferences():
+    data = request.get_json()
+    token = data.get('jwt')
+    user_id = None
+
+    if not token:
+        return jsonify({"message": "JWT is required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    res = get_user_preferences(user_id)
+    
+    if res:
+        return jsonify({"preferences": res}), 200
+    else:
+        return jsonify({"message": "Error fetching preferences"}), 500
 
 if __name__ == '__main__':
     create_tables()
