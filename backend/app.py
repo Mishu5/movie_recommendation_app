@@ -8,6 +8,7 @@ import hashlib
 import string
 import random
 from threading import Timer
+from flask_socketio import SocketIO, join_room, leave_room, send, emit
 
 from db.media import get_all_genres
 from recommendation.knn_recommendation import get_media_features, train_knn, delete_cache
@@ -17,6 +18,7 @@ rooms = {} #List of rooms that users can interact with
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
+socketio = SocketIO(app) #creating socketio instance
 
 @app.route('/')
 def hello_world():
@@ -178,6 +180,49 @@ def joint_room_endpoint():
     rooms[room_id]["members"].append(user_id)
     return jsonify({"message": "User joined the room"}), 200
 
+@app.route('/rooms/start', methods=['POST'])
+def start_room():
+    data = request.get_json()
+    token = data.get('jwt')
+    room_id = data.get('room_id')
+    user_id = None
+
+    if not token or not room_id:
+        return jsonify({"message": "JWT and room id are required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if room_id not in rooms:
+        return jsonify({"message": "Room does not exist"}), 400
+
+    if user_id != rooms[room_id]["creator"]:
+        return jsonify({"message": "User is not the creator of the room"}), 400
+
+    if len(rooms[room_id]["members"]) < 2:
+        return jsonify({"message": "Not enough members in the room"}), 400
+
+    rooms[room_id]["active"] = True
+    return jsonify({"message": "Room started"}), 200
+
+@socketio.on('join')
+def handle_join(data):
+    room_id = data.get('room_id')
+    user_id = data.get('user_id')
+    if room_id in rooms and user_id in rooms[room_id]["members"]:
+        join_room(room_id) #User join room
+        send('User has entered the room', room=room_id)
+
+def expire_room(room_id):
+    if room_id in rooms:
+        del rooms[room_id]
+        print(f"Room {room_id} has expired and been removed")
+
 
 if __name__ == '__main__':
     create_tables()
@@ -185,4 +230,4 @@ if __name__ == '__main__':
     check_and_add_reviews()
     media_features, media_ids = get_media_features()
     train_knn(media_features)
-    app.run(host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=5000)

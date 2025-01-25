@@ -3,3 +3,4 @@ psycopg2-binary
 SQLAlchemy
 scikit-learn
 PyJWT
+flask_socketio
