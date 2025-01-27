@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, request
-from db.create_tables import create_tables, check_and_add_media, check_and_add_reviews
+from db.create_tables import create_tables, check_and_add_media, check_and_add_reviews, check_and_add_creators
 from db.users import add_user, get_user
 import os
 import jwt
@@ -11,7 +11,7 @@ from threading import Timer
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 
 from db.media import get_all_genres
-from recommendation.knn_recommendation import get_media_features, train_knn, delete_cache
+from recommendation.knn_recommendation import get_media_features, train_knn, delete_cache, recommend_media
 from db.user_preferences import add_and_update_user_preference, get_user_preferences
 
 rooms = {} #List of rooms that users can interact with
@@ -69,7 +69,7 @@ def login():
 
     return jsonify({"message": "Login sucessful", "jwt": token}), 200
     
-@app.route('/add_preferences/add', methods=['POST'])
+@app.route('/preferences/add', methods=['POST'])
 def add_preference():
     data = request.get_json()
     token = data.get('jwt')
@@ -150,6 +150,7 @@ def create_room():
         "recommended_media": [],
         "created_at": datetime.datetime.now(),
     }
+    rooms[room_id]["members"].append(user_id)
 
     Timer(86400, expire_room, args=[room_id]).start()
     return jsonify({"message": "Room created", "room_id": room_id}), 200
@@ -180,6 +181,7 @@ def joint_room_endpoint():
     rooms[room_id]["members"].append(user_id)
     return jsonify({"message": "User joined the room"}), 200
 
+#TODO Convert to message-start
 @app.route('/rooms/start', methods=['POST'])
 def start_room():
     data = request.get_json()
@@ -210,6 +212,30 @@ def start_room():
     rooms[room_id]["active"] = True
     return jsonify({"message": "Room started"}), 200
 
+@app.route('/recommendations/get/<int:num_recommendations>', methods=['POST'])
+def get_recommendations(num_recommendations):
+    data = request.get_json()
+    token = data.get('jwt')
+    user_id = None
+
+    if not token:
+        return jsonify({"message": "JWT is required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if not user_id:
+        return jsonify({"message": "User not found"}), 404
+
+    recommendations = recommend_media(user_id, num_recommendations)
+
+    return jsonify({"recommendations": recommendations}), 200
+
 @socketio.on('join')
 def handle_join(data):
     room_id = data.get('room_id')
@@ -223,11 +249,18 @@ def expire_room(room_id):
         del rooms[room_id]
         print(f"Room {room_id} has expired and been removed")
 
+def create_recommendation_list(members):
+    recommendation_list = []
+    
+    return recommendation_list
+
 
 if __name__ == '__main__':
     create_tables()
     check_and_add_media()
     check_and_add_reviews()
-    media_features, media_ids = get_media_features()
-    train_knn(media_features)
-    socketio.run(app, host='0.0.0.0', port=5000)
+    check_and_add_creators()
+    delete_cache()
+    # media_features, media_ids = get_media_features()
+    # train_knn(media_features)
+    socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)

@@ -1,8 +1,15 @@
-from sqlalchemy import Column, Integer, String, Boolean, ARRAY, ForeignKey, Double, Float
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, ARRAY, Table
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+# Association table for the many-to-many relationship between Media and Creators
+media_creators_association = Table(
+    'media_creators', Base.metadata,
+    Column('media_id', String, ForeignKey('medias.tconst')),
+    Column('creator_id', String, ForeignKey('creators.id'))
+)
 
 class User(Base):
     __tablename__ = 'users'
@@ -26,10 +33,11 @@ class Media(Base):
     endYear = Column(Integer, nullable=True)  # Year the series ended (nullable for non-TV titles)
     runtimeMinutes = Column(Integer, nullable=True)  # Duration in minutes
     genres = Column(ARRAY(String))  # Comma-separated string of genres
-    averageRating = Column(Double, nullable=True)  # Average rating of the title
+    averageRating = Column(Float, nullable=True)  # Average rating of the title
     numVotes = Column(Integer, nullable=True)  # Number of votes the title has received
 
     preferences = relationship("UserPreference", back_populates="media")
+    creators = relationship("Creators", secondary=media_creators_association, back_populates="works")
 
 class UserPreference(Base):
     __tablename__ = "user_preferences"
@@ -49,3 +57,9 @@ class UserPreference(Base):
             "media_id": self.media_id,
             "rating": self.rating
         }
+
+class Creators(Base):
+    __tablename__ = "creators"
+
+    id = Column(String, primary_key=True)
+    works = relationship("Media", secondary=media_creators_association, back_populates="creators")

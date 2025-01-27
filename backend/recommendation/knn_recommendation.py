@@ -11,7 +11,7 @@ import db.user_preferences
 CACHE_FILE = '/app/cache/media_features_cache.pkl'
 PAGE_SIZE = 10000
 knn = None # KNN model
-
+scaler = None
 
 def save_to_cache(media_features, media_ids, all_genres, genre_index):
     try:
@@ -57,10 +57,7 @@ def get_media_features():
             features = [
                 media.isAdult,
                 media.startYear if media.startYear else 0,
-                media.endYear if media.endYear else 0,
-                media.runtimeMinutes if media.runtimeMinutes else 0,
                 media.averageRating if media.averageRating else 0,
-                media.numVotes if media.numVotes else 0,
                 0 # placeholder for user_individual_rating
             ]
             genre_features = [0] * len(all_genres)
@@ -75,6 +72,7 @@ def get_media_features():
     media_features = np.array(media_features)
 
     # Normalizing the data
+    global scaler
     scaler = StandardScaler()
     media_features = scaler.fit_transform(media_features)
 
@@ -98,19 +96,15 @@ def recommend_media(user_id, k=5):
         return None
     
     user_ratings = []
-    all_genres = db.media.get_all_genres()
-    genre_index = {genre: idx for idx, genre in enumerate(all_genres)}
+    _, media_ids, all_genres, genre_index = load_from_cache()
 
     for preference in user_preferences:
-        media = db.media.get_media_by_tconst(preference.tconst)
+        media = db.media.get_media_by_tconst(preference.media_id)
         if media:
             features = [
                 media.isAdult,
                 media.startYear if media.startYear else 0,
-                media.endYear if media.endYear else 0,
-                media.runtimeMinutes if media.runtimeMinutes else 0,
                 media.averageRating if media.averageRating else 0,
-                media.numVotes if media.numVotes else 0,
                 preference.rating if preference.rating else 0 # individual rating
             ]
             genre_features = [0] * len(all_genres)
@@ -120,13 +114,24 @@ def recommend_media(user_id, k=5):
             user_ratings.append(features)
 
     user_ratings = np.array(user_ratings)
-    scaler = StandardScaler()
+    global scaler
     user_ratings = scaler.fit_transform(user_ratings)
 
-    distances, indices = knn.kneighbors(user_ratings, n_neighbors=5)
+    distances, indices = knn.kneighbors(user_ratings, n_neighbors=k)
 
     recommended_ids = set()
-    for index_list in indices:
-        for idx in index_list:
-            recommended_ids.add(idx)
-    return list(recommended_ids)
+    recommended_distances = []
+    for idx_list, dist_list in zip(indices, distances):
+        for idx, dist in zip(idx_list, dist_list):
+            recommended_ids.add(media_ids[idx])
+            recommended_distances.append(dist)
+
+    return list(recommended_ids), recommended_distances
+
+
+def test_recommend_media(user_id, k=5):
+    recommendations = recommend_media(user_id, k)
+    if recommendations:
+        print(f"Recommendations for user {user_id}: {recommendations}")
+    else:
+        print(f"No recommendations for user {user_id}")

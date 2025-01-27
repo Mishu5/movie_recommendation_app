@@ -12,7 +12,7 @@ def get_user_preferences(user_id):
     session = Session()
     user_preferences = session.query(UserPreference).filter(UserPreference.user_id == user_id).all()
     session.close()
-    return [preference.to_dict() for preference in user_preferences]
+    return user_preferences
 
 def add_and_update_user_preference(user_id, tconst, rating):
     new_user_preference = UserPreference(
