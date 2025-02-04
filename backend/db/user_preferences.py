@@ -20,7 +20,6 @@ def add_and_update_user_preference(user_id, tconst, rating):
         media_id=tconst,
         rating=rating
     )
-    print(new_user_preference)
     try:
         session = Session()
         preference = session.query(UserPreference).filter(UserPreference.user_id == user_id, UserPreference.media_id == tconst).first()

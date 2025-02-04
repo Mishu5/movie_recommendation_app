@@ -17,7 +17,6 @@ def create_tables():
 
 def check_and_add_media():
     media = check_media()
-    print(media)
     if not media:
         print("Adding media...")
         rows_of_media = get_media_from_tsv("title.basics.tsv")
