@@ -24,8 +24,6 @@ services:
     volumes:
       - ./frontend:/app
     tty: true
-    stdin_open: true
-    command: ["npx", "expo", "start", "--web"]
 
   db:
     image: postgres:13
