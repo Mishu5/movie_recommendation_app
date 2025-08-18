@@ -88,28 +88,41 @@ def recommend_media(user_id, k=5):
     return media, distances
 
 
-def recommend_media_based_on_genre(user_preferences, k=5):
+def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
     #add if nothing in user_preferences
     
     #features
     global genre_knn
     if not genre_knn:
-        return None
+        return [], []
     
-    user_ratings = []
     _, media_ids, all_genres, genre_index = load_from_cache_genre()
 
-    
+    user_profile = np.zeros(len(all_genres))
+    total_weight = 0
+
+
     for preference in user_preferences:
         media = db.media.get_media_by_tconst(preference.media_id)
         if media:
-            genre_features = [0] * len(all_genres)
+            genre_features = np.zeros(len(all_genres))
             for genre in media.genres:
                 genre_features[genre_index[genre]] = 1
-            user_ratings.append(genre_features)
 
-    user_ratings = np.array(user_ratings)
-    distances, indices = genre_knn.kneighbors(user_ratings, n_neighbors=k)
+            weight = preference.rating
+            # Add weights by user rating
+            user_profile += genre_features * weight
+            total_weight += weight
+
+            if media.averageRating:
+                user_profile += genre_features * alpha * media.averageRating
+            if media.numVotes:
+                user_profile += genre_features * beta * np.log1p(media.numVotes)
+
+    if total_weight > 0:
+        user_profile /= total_weight
+
+    distances, indices = genre_knn.kneighbors([user_profile], n_neighbors=k)
 
     #Convert knn results to list of media ids and distances
     recommended_ids = set()

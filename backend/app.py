@@ -361,14 +361,17 @@ if __name__ == '__main__':
         user = get_user("test@gmail.com")
         for media in media_list:
             add_and_update_user_preference(user.id, media, random.uniform(5, 10))
-    media, distances = recommend_media(user.id, 5)
+    media, distances = recommend_media(user.id, 100)
+    count = 0
     for m, n in zip(media, distances):
         media = get_media_by_tconst(m)
+        count += 1
         if m in media_list:
             print(f"\033[91mMedia: {m}, Title: {media.primaryTitle}, Genres: {media.genres}, Distance: {n}\033[0m")
         else:
             print(f"Media: {m}, Title: {media.primaryTitle}, Genres: {media.genres}, Distance: {n}")
-
+            
+    print(f"Media count: {count}")
     #End of test
 
     socketio.run(app, host='0.0.0.0', port=5000, allow_unsafe_werkzeug=True)
