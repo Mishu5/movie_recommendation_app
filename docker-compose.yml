@@ -24,6 +24,8 @@ services:
     volumes:
       - ./frontend:/app
     tty: true
+    environment:
+      - EXPO_PUBLIC_API_URL=http://localhost:5000
 
   db:
     image: postgres:13

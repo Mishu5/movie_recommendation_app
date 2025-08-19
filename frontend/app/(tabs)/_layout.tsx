@@ -15,9 +15,8 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: Platform.OS === 'web',
+        headerShown: false,
         tabBarButton: HapticTab,
-        tabBarPosition: Platform.OS === 'web' ? 'bottom' : 'top',
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
@@ -27,10 +26,20 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
-      <Tabs.Screen name="index" options={{ title: 'Media' }} />
-      <Tabs.Screen name="login" options={{ title: 'Login' }} />
-      <Tabs.Screen name="user" options={{ title: 'User Panel' }} />
-      <Tabs.Screen name="room" options={{ title: 'Rooms' }} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
