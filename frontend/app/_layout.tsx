@@ -1,29 +1,45 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { Stack, Tabs, useRouter } from "expo-router";
+import { buttonStyles } from "../styles/styles";
+import { Text, Pressable } from "react-native";
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
 
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  const router = useRouter();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+  <Stack
+    screenOptions={{
+      headerTitle: () => (
+        <Text
+          style={{
+            textDecorationLine: "none",
+            color: "#007AFF",
+            fontWeight: "bold",
+            fontSize: 20,
+          }}
+        >
+          Movie Recommendation Site
+        </Text>
+      ),
+      headerRight: () => (
+        <>
+          <Pressable
+            style={buttonStyles.container}
+            onPress={() => router.push("/login")}
+          >
+            <Text style={buttonStyles.text}>Log in</Text>
+          </Pressable>
+
+          <Pressable
+            style={buttonStyles.container}
+            onPress={() => router.push("/register")}
+          >
+            <Text style={buttonStyles.text}>Register</Text>
+          </Pressable>
+        </>
+      ),
+    }}
+  >
+  </Stack>
   );
 }
