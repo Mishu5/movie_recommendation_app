@@ -110,7 +110,7 @@ def add_preference():
         return jsonify({"message": "Error adding preference"}), 500
 
 #Get all preferences 
-@app.route('/preferences/get_all', methods=['GET'])
+@app.route('/preferences/get_all', methods=['POST'])
 def get_preferences():
     data = request.get_json()
     token = data.get('jwt')

@@ -1,10 +1,12 @@
+const API_URL = "http://localhost:5000/";
+
 export async function handleLogin(email: string, password: string): Promise<{ success: boolean; message?: string, jwt?: string }> {
   if (!email || !password) {
     return { success: false, message: "Email and password are required.", jwt: ""};
   }
   return {success: true, message: "Login successful.", jwt: "jwt_token_here"};
   try {
-    const response = await fetch("http://localhost:5000/api/login", {
+    const response = await fetch(API_URL + "auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
@@ -27,7 +29,7 @@ export async function handleRegister(email: string, password: string): Promise<{
   }
   return {success: true, message: "Login successful.", jwt: "jwt_token_here"};
   try {
-    const response = await fetch("http://localhost:5000/api/register", {
+    const response = await fetch(API_URL + "auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),

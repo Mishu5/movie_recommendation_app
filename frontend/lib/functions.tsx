@@ -1,0 +1,120 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const API_URL = "http://localhost:5000/";
+
+export async function addPreference(tconst: string, rating: number) {
+  if (!tconst || rating == null) {
+    return { success: false, message: "Movie ID and rating are required." };
+  }
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+
+    const response = await fetch(API_URL + "preferences/add", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt, tconst, rating }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, message: data.message };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
+export async function getPreferences() {
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+
+    const response = await fetch(API_URL + "preferences/get_all", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, preferences: data.preferences || [] };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
+// ---------- ROOMS ----------
+
+export async function createRoom() {
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+
+    const response = await fetch(API_URL + "rooms/create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, roomId: data.room_id };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
+export async function joinRoom(roomId: string) {
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+
+    const response = await fetch(API_URL + "rooms/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt, room_id: roomId }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, message: data.message };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
+// ---------- RECOMMENDATIONS ----------
+
+export async function getRecommendations() {
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+
+    const response = await fetch(API_URL + "recommendations/get", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, recommendations: data.recommendations || [] };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}

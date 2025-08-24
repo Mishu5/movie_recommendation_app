@@ -219,9 +219,10 @@ export default function Index() {
         </Pressable>
         <Pressable onPress={() => toggleSort("rating")}>
           <Text style={{ color: sortBy === "rating" ? "#007AFF" : "black" }}>
+            Rating:
             {sortBy === "rating" && sortDir === "desc"
-              ? "Top → Least"
-              : "Least → Best"}
+              ? " Top → Least"
+              : " Least → Top"}
           </Text>
         </Pressable>
         <Pressable
@@ -232,7 +233,7 @@ export default function Index() {
           <Text
             style={{ color: filterMinRating === 8 ? "#007AFF" : "black" }}
           >
-            {filterMinRating === 8 ? "Clear Filter" : "Filter ≥ 8"}
+            {filterMinRating === 8 ? "All ratings" : "Filter ≥ 8"}
           </Text>
         </Pressable>
       </View>
