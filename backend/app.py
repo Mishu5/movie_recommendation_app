@@ -19,7 +19,7 @@ rooms = {} #List of rooms that users can interact with
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
-socketio = SocketIO(app) #creating socketio instance
+socketio = SocketIO(app, cors_allowed_origins="*") #creating socketio instance
 CORS(app, resources={r"/*": {"origins": "*"}}) #Enable CORS for all routes
 
 def verify_jwt(token):

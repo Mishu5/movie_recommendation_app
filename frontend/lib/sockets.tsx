@@ -1,19 +1,24 @@
 import { io, Socket } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SOCKET_URL = "http://localhost:5000/";
+const SOCKET_URL = "http://localhost:5000";
 
 let socket: Socket | null = null;
 
 // connection 
 
 export async function connectSocket() {
+    
+    if( socket && socket.connected ) {
+      return socket;
+    }
     const jwt = await AsyncStorage.getItem("jwt");
     if (!jwt) throw new Error("Not logged in.");
 
     socket = io(SOCKET_URL, {
         transports: ["websocket"],
         auth: { jwt: jwt },
+        reconnection: true,
     });
 
     socket.on("connect", () => {
@@ -66,8 +71,6 @@ export async function likeMediaSocket(roomId: string, mediaId: string) {
 }
 
 // listening to events
-
-
 export function setupSocketListeners(
   onMessageStarted: (data: any) => void,
   onError: (data: any) => void,
