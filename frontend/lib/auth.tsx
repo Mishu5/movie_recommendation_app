@@ -1,10 +1,13 @@
 const API_URL = "http://localhost:5000/";
 
-export async function handleLogin(email: string, password: string): Promise<{ success: boolean; message?: string, jwt?: string }> {
+export async function handleLogin(
+  email: string,
+  password: string
+): Promise<{ success: boolean; message?: string; jwt?: string }> {
   if (!email || !password) {
-    return { success: false, message: "Email and password are required.", jwt: ""};
+    return { success: false, message: "Email and password are required.", jwt: "" };
   }
-  return {success: true, message: "Login successful.", jwt: "jwt_token_here"};
+
   try {
     const response = await fetch(API_URL + "auth/login", {
       method: "POST",
@@ -12,10 +15,11 @@ export async function handleLogin(email: string, password: string): Promise<{ su
       body: JSON.stringify({ email, password }),
     });
 
+    const data = await response.json();
+
     if (response.ok) {
-      return { success: true };
+      return { success: true, jwt: data.jwt, message: "Login successful." };
     } else {
-      const data = await response.json();
       return { success: false, message: data.message || "Login failed." };
     }
   } catch (error) {
@@ -23,11 +27,14 @@ export async function handleLogin(email: string, password: string): Promise<{ su
   }
 }
 
-export async function handleRegister(email: string, password: string): Promise<{ success: boolean; message?: string, jwt?: string }> {
+export async function handleRegister(
+  email: string,
+  password: string
+): Promise<{ success: boolean; message?: string; jwt?: string }> {
   if (!email || !password) {
-    return { success: false, message: "Email and password are required.", jwt: ""};
+    return { success: false, message: "Email and password are required.", jwt: "" };
   }
-  return {success: true, message: "Login successful.", jwt: "jwt_token_here"};
+
   try {
     const response = await fetch(API_URL + "auth/register", {
       method: "POST",
@@ -35,10 +42,11 @@ export async function handleRegister(email: string, password: string): Promise<{
       body: JSON.stringify({ email, password }),
     });
 
+    const data = await response.json();
+
     if (response.ok) {
-      return { success: true };
+      return { success: true, jwt: data.jwt, message: "Register successful." };
     } else {
-      const data = await response.json();
       return { success: false, message: data.message || "Register failed." };
     }
   } catch (error) {

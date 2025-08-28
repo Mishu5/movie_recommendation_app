@@ -9,6 +9,7 @@ import string
 import random
 from threading import Timer
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
+from flask_cors import CORS
 
 from db.media import get_all_genres, get_media_by_tconst
 from recommendation.knn_recommendation import train_knns, delete_cache, recommend_media
@@ -19,6 +20,7 @@ rooms = {} #List of rooms that users can interact with
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
 socketio = SocketIO(app) #creating socketio instance
+CORS(app, resources={r"/*": {"origins": "*"}}) #Enable CORS for all routes
 
 def verify_jwt(token):
     try:
@@ -28,6 +30,23 @@ def verify_jwt(token):
         return None
     except jwt.InvalidTokenError:
         return None
+
+def generate_jwt(email):
+    #getting user
+    user = get_user(email)
+    if not user:
+        return None
+    #generating JWT
+    token = jwt.encode(
+        {
+            "user_id": user.id,
+            "email": user.email,
+            "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24) #JWT valid for 24h
+        },
+        SECRET_KEY,
+        algorithm="HS256"
+    )
+    return token
 
 @app.route('/')
 def hello_world():
@@ -43,8 +62,11 @@ def register():
     #hashing password
     hashed_password = hashlib.sha256(password.encode()).hexdigest()
     res = add_user(email=email, password=hashed_password)
+
+    token = generate_jwt(email)
+
     if res:
-        return ({"message": "Register sucessfully"}), 200
+        return ({"message": "Register sucessfully", "jwt": token}), 200
     return({"message": "User exists"}), 401
 
 #Login
@@ -65,16 +87,7 @@ def login():
     if hashed_password != user.password:
         return jsonify({"message": "Invalid email or password"}), 401
 
-    #generating JWT
-    token = jwt.encode(
-        {
-            "user_id": user.id,
-            "email": user.email,
-            "exp": datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24) #JWT valid for 24h
-        },
-        SECRET_KEY,
-        algorithm="HS256"
-    )
+    token = generate_jwt(email)
 
     return jsonify({"message": "Login sucessful", "jwt": token}), 200
 
@@ -255,7 +268,7 @@ def handle_start(data):
     if room_id in rooms and user_id == rooms[room_id]["creator"]:
         rooms[room_id]["active"] = True
         rooms[room_id]["recommended_media"] = create_recommendation_list(rooms[room_id]["members"])
-        emit('message-start', {'message': 'Room has started'}, room=room_id)
+        emit('message-started', {'message': 'Room has started'}, room=room_id)
         print('Room has started: {room_id}')
 
 #Handle like media
