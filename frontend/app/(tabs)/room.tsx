@@ -1,6 +1,6 @@
 import { Text, View, Image, Button, TextInput } from "react-native";
 import { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   connectSocket,
   disconnectSocket,
@@ -12,8 +12,6 @@ import {
 } from "../../lib/sockets";
 import { createRoom, joinRoom, getRecommendations, getMovieDetails } from "../../lib/functions";
 
-const API_URL = "http://localhost:5000";
-
 export default function Room() {
   const [roomCode, setRoomCode] = useState("");
   const [roomId, setRoomId] = useState("");
@@ -21,8 +19,52 @@ export default function Room() {
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentMovie, setCurrentMovie] = useState<any>(null);
+  const [roomActive, setRoomActive] = useState(false);
 
-  // Connection
+  const roomIdRef = useRef(roomId);
+  useEffect(() => {
+    roomIdRef.current = roomId;
+  }, [roomId]);
+
+  // Restore room data on mount
+  useEffect(() => {
+    const restoreRoomData = async () => {
+      try {
+        const savedRoomId = await AsyncStorage.getItem("roomId");
+        const savedRecommendations = await AsyncStorage.getItem("recommendations");
+        const savedIndex = await AsyncStorage.getItem("currentIndex");
+        const savedIsCreator = await AsyncStorage.getItem("isCreator");
+        const savedRoomActive = await AsyncStorage.getItem("roomActive");
+
+        if (savedRoomId) setRoomId(savedRoomId);
+        if (savedRecommendations) setRecommendations(JSON.parse(savedRecommendations));
+        if (savedIndex) setCurrentIndex(parseInt(savedIndex));
+        if (savedIsCreator) setIsCreator(savedIsCreator === "true");
+        if (savedRoomActive) setRoomActive(savedRoomActive === "true");
+      } catch (e) {
+        console.error("Error restoring room data:", e);
+      }
+    };
+    restoreRoomData();
+  }, []);
+
+  // Save room data whenever state changes
+  useEffect(() => {
+    const saveRoomData = async () => {
+      try {
+        await AsyncStorage.setItem("roomId", roomIdRef.current);
+        await AsyncStorage.setItem("recommendations", JSON.stringify(recommendations));
+        await AsyncStorage.setItem("currentIndex", currentIndex.toString());
+        await AsyncStorage.setItem("isCreator", isCreator.toString());
+        await AsyncStorage.setItem("roomActive", roomActive.toString());
+      } catch (e) {
+        console.error("Error saving room data:", e);
+      }
+    };
+    saveRoomData();
+  }, [roomId, recommendations, currentIndex, isCreator, roomActive]);
+
+  // Socket connection and listeners
   useEffect(() => {
     connectSocket()
       .then(() => {
@@ -30,8 +72,8 @@ export default function Room() {
         setupSocketListeners(
           (data) => {
             console.log("Room started:", data);
-            // Fetch recommendations when room starts
-            handleStartRoom();
+            setRoomActive(true);
+            handleStartRoom(roomIdRef.current);
           },
           (error) => {
             console.error("Socket error:", error);
@@ -46,18 +88,15 @@ export default function Room() {
       });
 
     return () => {
-      if (roomId) {
-        leaveRoomSocket(roomId);
-      }
+      if (roomIdRef.current) leaveRoomSocket(roomIdRef.current);
       disconnectSocket();
     };
   }, []);
 
-  // Fetch media info when currentMovie changes
+  // Fetch movie details when currentIndex or recommendations change
   useEffect(() => {
     if (recommendations.length > 0 && currentIndex < recommendations.length) {
-      const tconst = recommendations[currentIndex];
-      fetchMovie(tconst);
+      fetchMovie(recommendations[currentIndex]);
     } else {
       setCurrentMovie(null);
     }
@@ -67,14 +106,13 @@ export default function Room() {
     try {
       const res = await getMovieDetails(tconst);
       setCurrentMovie(res.movie);
+      console.log("Fetched movie details:", res.movie);
     } catch (error) {
       console.error("Error fetching movie data: ", error);
     }
   };
 
-  const showNextMovie = () => {
-    setCurrentIndex((prevIndex) => prevIndex + 1);
-  };
+  const showNextMovie = () => setCurrentIndex((prev) => prev + 1);
 
   const handleCreateRoom = async () => {
     try {
@@ -84,9 +122,7 @@ export default function Room() {
         setRoomId(res.roomId);
         joinRoomSocket(res.roomId);
         console.log("Room created with ID:", res.roomId);
-      } else {
-        console.error("Failed to create room:", res.message);
-      }
+      } else console.error("Failed to create room:", res.message);
     } catch (e) {
       console.error("Failed to create room:", e);
     }
@@ -99,47 +135,64 @@ export default function Room() {
         setRoomId(roomCode);
         setIsCreator(false);
         joinRoomSocket(roomCode);
-      } else {
-        console.error("Failed to join room:", res.message);
-      }
+      } else console.error("Failed to join room:", res.message);
     } catch (e) {
       console.error("Failed to join room:", e);
     }
   };
 
-  const handleRoomStartCommand = async () => {
-    if (roomId) {
-      startRoomSocket(roomId);
-    } else {
-      console.error("No room ID available to start the room.");
-    }
+  const handleRoomStartCommand = () => {
+    if (roomIdRef.current) startRoomSocket(roomIdRef.current);
+    else console.error("No room ID available to start the room.");
   };
 
-  const handleStartRoom = async () => {
-    console.log("Fetching recommendations for room:", roomId);
-    if (roomId) {
-      const res = await getRecommendations(roomId);
+  const handleStartRoom = async (currentRoomId: string) => {
+    console.log("Handling room start for room ID:", currentRoomId);
+    if (currentRoomId) {
+      const res = await getRecommendations(currentRoomId);
       console.log("Recommendations fetched:", res);
       if (res.success) {
         setRecommendations(res.recommendations);
         setCurrentIndex(0);
-      } else {
-        console.error("Failed to get recommendations:", res.message);
-      }
-    } else {
-      console.error("No room ID available to fetch recommendations.");
+        fetchMovie(res.recommendations[0]);  
+      } else console.error("Failed to get recommendations:", res.message);
     }
   };
 
   const handleLike = () => {
-    if (roomId && currentMovie) {
-      likeMediaSocket(roomId, currentMovie.tconst);
+    if (roomIdRef.current && currentMovie) {
+      likeMediaSocket(roomIdRef.current, currentMovie.tconst);
       showNextMovie();
     }
   };
 
-  const handleDislike = () => {
-    showNextMovie();
+  const handleDislike = () => showNextMovie();
+
+  // --- Leave room and clear all state ---
+  const handleLeaveRoom = async () => {
+    if (roomIdRef.current) leaveRoomSocket(roomIdRef.current);
+
+    // Clear state
+    setRoomId("");
+    setIsCreator(false);
+    setRecommendations([]);
+    setCurrentIndex(0);
+    setRoomActive(false);
+    setCurrentMovie(null);
+
+    // Remove from AsyncStorage
+    try {
+      await AsyncStorage.multiRemove([
+        "roomId",
+        "isCreator",
+        "recommendations",
+        "currentIndex",
+        "roomActive",
+      ]);
+      console.log("Room data cleared from AsyncStorage");
+    } catch (e) {
+      console.error("Error clearing room data:", e);
+    }
   };
 
   return (
@@ -163,7 +216,10 @@ export default function Room() {
       ) : (
         <>
           <Text>Room: {roomId}</Text>
-          {isCreator && <Button title="Start Room" onPress={handleRoomStartCommand} />}
+          {isCreator && !roomActive && (
+            <Button title="Start Room" onPress={handleRoomStartCommand} />
+          )}
+          <Button title="Leave Room" onPress={handleLeaveRoom} color="red" />
 
           {currentMovie ? (
             <View style={{ marginTop: 20, alignItems: "center" }}>

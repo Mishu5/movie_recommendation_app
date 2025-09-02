@@ -26,6 +26,18 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     await AsyncStorage.removeItem("jwt");
+    // Clear room-related data on logout
+    try {
+      await AsyncStorage.multiRemove([
+        "roomId",
+        "isCreator",
+        "recommendations",
+        "currentIndex",
+        "roomActive",
+      ]);
+    } catch (e) {
+      console.error("Error clearing room data:", e);
+    }
     setIsLoggedIn(false); // Update state so UI re-renders immediately
   };
 

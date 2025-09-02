@@ -122,10 +122,10 @@ export async function getRecommendations(roomId: string) {
 // ---------- Media ----------
 export async function getMovieDetails(tconst: string) {
   try {
-    const response = await fetch(API_URL + `movie/${tconst}`);
+    const response = await fetch(API_URL + `media/${tconst}`);
     const data = await response.json();
     if (response.ok) {
-      return { success: true, movie: data.media_data };
+      return { success: true, movie: data.media };
     } else {
       return { success: false, message: data.message };
     }
