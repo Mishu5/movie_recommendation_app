@@ -97,20 +97,35 @@ export async function joinRoom(roomId: string) {
 
 // ---------- RECOMMENDATIONS ----------
 
-export async function getRecommendations() {
+export async function getRecommendations(roomId: string) {
   try {
     const jwt = await AsyncStorage.getItem("jwt");
     if (!jwt) return { success: false, message: "Not logged in." };
 
-    const response = await fetch(API_URL + "recommendations/get", {
+    const response = await fetch(API_URL + "rooms/recommendations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jwt }),
+      body: JSON.stringify({ jwt, room_id: roomId }),
     });
 
     const data = await response.json();
     if (response.ok) {
-      return { success: true, recommendations: data.recommendations || [] };
+      return { success: true, recommendations: data.recommended_media || [] };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
+// ---------- Media ----------
+export async function getMovieDetails(tconst: string) {
+  try {
+    const response = await fetch(API_URL + `movie/${tconst}`);
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, movie: data.media_data };
     } else {
       return { success: false, message: data.message };
     }

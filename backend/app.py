@@ -7,7 +7,7 @@ import datetime
 import hashlib
 import string
 import random
-from threading import Timer
+from threading import Timer, Thread
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_cors import CORS
 
@@ -19,8 +19,64 @@ rooms = {} #List of rooms that users can interact with
 
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
+K_RECOMMENDATION = int(os.getenv("K_RECOMMENDATION", 50))
 socketio = SocketIO(app, cors_allowed_origins="*") #creating socketio instance
 CORS(app, resources={r"/*": {"origins": "*"}}) #Enable CORS for all routes
+
+
+#test
+media_list = ["tt0000003",
+"tt0000004",
+"tt0000015",
+"tt0000233",
+"tt0000251",
+"tt0000300",
+"tt0000516",
+"tt0000552",
+"tt0000553",
+"tt0000554",
+"tt0000565",
+"tt0000603",
+"tt0000603",
+"tt0000658",
+"tt0000682",
+"tt0000704",
+"tt0000756",
+"tt0000924",
+"tt0001218",
+"tt0001527",
+"tt0001737",
+"tt0002056",
+"tt0002226",
+"tt0002260",
+"tt0002641",
+"tt0002650",
+"tt0002657",
+"tt0002666",
+"tt0002695",
+"tt0002720",
+"tt0002731",
+"tt0002740",
+"tt0002754",
+"tt0002760",
+"tt0002778",
+"tt0002834",
+"tt0002896",
+"tt0002908",
+"tt0002929",
+"tt0002995",
+"tt0003031",
+"tt0003129",
+"tt0003130",
+"tt0003137",
+"tt0003148",
+"tt0003166",
+"tt0003179",
+"tt0003180",
+"tt0003181",
+"tt0003182",
+"tt0003138",
+]
 
 def verify_jwt(token):
     try:
@@ -265,9 +321,10 @@ def handle_start(data):
     if not user_id:
         return
 
-    if room_id in rooms and user_id == rooms[room_id]["creator"]:
+    if room_id in rooms and user_id == rooms[room_id]["creator"] and not rooms[room_id]["active"]:
         rooms[room_id]["active"] = True
-        rooms[room_id]["recommended_media"] = create_recommendation_list(rooms[room_id]["members"])
+        recommendations = create_recommendation_list(rooms[room_id]["members"])
+        rooms[room_id]["recommended_media"] = recommendations
         emit('message-started', {'message': 'Room has started'}, room=room_id)
         print('Room has started: {room_id}')
 
@@ -293,17 +350,83 @@ def handle_like(data):
             emit('all-liked', {'media_id': media_id}, room=room_id)
             print(f'Media {media_id} has been selected in room {room_id}')
 
-
 def expire_room(room_id):
     if room_id in rooms:
         del rooms[room_id]
         print(f"Room {room_id} has expired and been removed")
 
-def create_recommendation_list(members):
-    recommendation_list = []
+#Get room recommendation list
+@app.route('/rooms/recommendations', methods=['POST'])
+def get_room_recommendations():
+    data = request.get_json()
+    token = data.get('jwt')
+    room_id = data.get('room_id')
+    user_id = None
+
+    if not token or not room_id:
+        return jsonify({"message": "JWT and room id are required"}), 400
     
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if room_id not in rooms or user_id not in rooms[room_id]["members"]:
+        return jsonify({"message": "Room does not exist or user is not in the room"}), 400
+
+    if not rooms[room_id]["active"]:
+        return jsonify({"message": "Room is not active yet"}), 400
+
+    return jsonify({"recommended_media": rooms[room_id]["recommended_media"]}), 200
+
+#Get media details
+@app.route('/media/<tconst>', methods=['GET'])
+def get_media(tconst):
+    media = get_media_by_tconst(tconst)
+    if not media:
+        return jsonify({"message": "Media not found"}), 404
+    
+    media_data = {
+        "tconst": media.tconst,
+        "titleType": media.titleType,
+        "primaryTitle": media.primaryTitle,
+        "originalTitle": media.originalTitle,
+        "isAdult": media.isAdult,
+        "startYear": media.startYear,
+        "endYear": media.endYear,
+        "runtimeMinutes": media.runtimeMinutes,
+        "genres": media.genres
+    }
+    return jsonify({"media": media_data}), 200
+
+#Create recommendation list for room based on member without duplicates
+def create_recommendation_list(members):
+    recommendation_list_per_member = [
+        create_recommendation_for_member(member) for member in members
+    ]
+    seen = set()
+    recommendation_list = []
+    for sublist in recommendation_list_per_member:
+        for item in sublist:
+            if item not in seen:
+                seen.add(item)
+                recommendation_list.append(item)
+
+
+    #testing purpose
+    for item in media_list:
+        if item not in seen:
+            seen.add(item)
+            recommendation_list.append(item)
+
     return recommendation_list
 
+def create_recommendation_for_member(member_id):
+    media, distances = recommend_media(member_id, k=K_RECOMMENDATION)
+    return media
 
 if __name__ == '__main__':
     create_tables()
@@ -317,58 +440,7 @@ if __name__ == '__main__':
     user = get_user("test@gmail.com")
   
     #List of sample medias with Animation genre
-    media_list = ["tt0000003",
-"tt0000004",
-"tt0000015",
-"tt0000233",
-"tt0000251",
-"tt0000300",
-"tt0000516",
-"tt0000552",
-"tt0000553",
-"tt0000554",
-"tt0000565",
-"tt0000603",
-"tt0000603",
-"tt0000658",
-"tt0000682",
-"tt0000704",
-"tt0000756",
-"tt0000924",
-"tt0001218",
-"tt0001527",
-"tt0001737",
-"tt0002056",
-"tt0002226",
-"tt0002260",
-"tt0002641",
-"tt0002650",
-"tt0002657",
-"tt0002666",
-"tt0002695",
-"tt0002720",
-"tt0002731",
-"tt0002740",
-"tt0002754",
-"tt0002760",
-"tt0002778",
-"tt0002834",
-"tt0002896",
-"tt0002908",
-"tt0002929",
-"tt0002995",
-"tt0003031",
-"tt0003129",
-"tt0003130",
-"tt0003137",
-"tt0003148",
-"tt0003166",
-"tt0003179",
-"tt0003180",
-"tt0003181",
-"tt0003182",
-"tt0003138",
-]
+
     if not user:
         add_user("test@gmail.com", "password")
         user = get_user("test@gmail.com")

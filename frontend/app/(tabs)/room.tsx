@@ -1,6 +1,5 @@
-import { Text, View, Image, Button, Pressable,TextInput } from "react-native";
-import { styles } from "../../styles/styles";
-import { useEffect, useState } from "react";
+import { Text, View, Image, Button, TextInput } from "react-native";
+import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import {
   connectSocket,
@@ -11,11 +10,11 @@ import {
   startRoomSocket,
   likeMediaSocket,
 } from "../../lib/sockets";
+import { createRoom, joinRoom, getRecommendations, getMovieDetails } from "../../lib/functions";
 
 const API_URL = "http://localhost:5000";
 
 export default function Room() {
-
   const [roomCode, setRoomCode] = useState("");
   const [roomId, setRoomId] = useState("");
   const [isCreator, setIsCreator] = useState(false);
@@ -24,28 +23,37 @@ export default function Room() {
   const [currentMovie, setCurrentMovie] = useState<any>(null);
 
   // Connection
-
   useEffect(() => {
-
-    connectSocket().then(() => {
-      console.log("Socket connected in Room component");
-      setupSocketListeners(
-        (data) => { console.log("Room started:", data); },
-        (error) => { console.error("Socket error:", error); },
-        (data) => { console.log("Media all liked:", data); }  
-      );
-    }).catch((error) => {
-      console.error("Socket connection error in Room component:", error);
-    });  
+    connectSocket()
+      .then(() => {
+        console.log("Socket connected in Room component");
+        setupSocketListeners(
+          (data) => {
+            console.log("Room started:", data);
+            // Fetch recommendations when room starts
+            handleStartRoom();
+          },
+          (error) => {
+            console.error("Socket error:", error);
+          },
+          (data) => {
+            console.log("Media all liked:", data);
+          }
+        );
+      })
+      .catch((error) => {
+        console.error("Socket connection error in Room component:", error);
+      });
 
     return () => {
-      if (roomId) {leaveRoomSocket(roomId);}
+      if (roomId) {
+        leaveRoomSocket(roomId);
+      }
       disconnectSocket();
-    }
+    };
   }, []);
 
   // Fetch media info when currentMovie changes
-
   useEffect(() => {
     if (recommendations.length > 0 && currentIndex < recommendations.length) {
       const tconst = recommendations[currentIndex];
@@ -56,9 +64,9 @@ export default function Room() {
   }, [recommendations, currentIndex]);
 
   const fetchMovie = async (tconst: string) => {
-    try{
-      const res = await axios.get(`${API_URL}movie/${tconst}`);
-      setCurrentMovie(res.data);
+    try {
+      const res = await getMovieDetails(tconst);
+      setCurrentMovie(res.movie);
     } catch (error) {
       console.error("Error fetching movie data: ", error);
     }
@@ -70,10 +78,15 @@ export default function Room() {
 
   const handleCreateRoom = async () => {
     try {
-      const res = await axios.post(`${API_URL}/rooms/create`);
-      setRoomId(res.data.room_id);
-      setIsCreator(true);
-      joinRoomSocket(res.data.room_id);
+      const res = await createRoom();
+      if (res.success && res.roomId) {
+        setIsCreator(true);
+        setRoomId(res.roomId);
+        joinRoomSocket(res.roomId);
+        console.log("Room created with ID:", res.roomId);
+      } else {
+        console.error("Failed to create room:", res.message);
+      }
     } catch (e) {
       console.error("Failed to create room:", e);
     }
@@ -81,25 +94,51 @@ export default function Room() {
 
   const handleJoinRoom = async () => {
     try {
-      const res = await axios.post(`${API_URL}/rooms/join`, { room_id: roomCode });
-      setRoomId(res.data.room_id);
-      setIsCreator(false);
-      joinRoomSocket(res.data.room_id);
+      const res = await joinRoom(roomCode);
+      if (res.success) {
+        setRoomId(roomCode);
+        setIsCreator(false);
+        joinRoomSocket(roomCode);
+      } else {
+        console.error("Failed to join room:", res.message);
+      }
     } catch (e) {
       console.error("Failed to join room:", e);
     }
   };
 
-  const handleStartRoom = () => {
-    if (roomId) startRoomSocket(roomId);
+  const handleRoomStartCommand = async () => {
+    if (roomId) {
+      startRoomSocket(roomId);
+    } else {
+      console.error("No room ID available to start the room.");
+    }
+  };
+
+  const handleStartRoom = async () => {
+    console.log("Fetching recommendations for room:", roomId);
+    if (roomId) {
+      const res = await getRecommendations(roomId);
+      console.log("Recommendations fetched:", res);
+      if (res.success) {
+        setRecommendations(res.recommendations);
+        setCurrentIndex(0);
+      } else {
+        console.error("Failed to get recommendations:", res.message);
+      }
+    } else {
+      console.error("No room ID available to fetch recommendations.");
+    }
   };
 
   const handleLike = () => {
-    if (roomId && currentMovie) likeMediaSocket(roomId, currentMovie.tconst);
+    if (roomId && currentMovie) {
+      likeMediaSocket(roomId, currentMovie.tconst);
+      showNextMovie();
+    }
   };
 
   const handleDislike = () => {
-    // just skip locally (server only tracks likes)
     showNextMovie();
   };
 
@@ -124,7 +163,7 @@ export default function Room() {
       ) : (
         <>
           <Text>Room: {roomId}</Text>
-          {isCreator && <Button title="Start Room" onPress={handleStartRoom} />}
+          {isCreator && <Button title="Start Room" onPress={handleRoomStartCommand} />}
 
           {currentMovie ? (
             <View style={{ marginTop: 20, alignItems: "center" }}>
