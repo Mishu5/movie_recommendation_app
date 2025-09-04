@@ -93,8 +93,11 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
     session = Session()
     query = session.query(Media)
 
-    # --- filtrowanie ---
+    # --- filtering ---
     query = query.filter(Media.averageRating >= min_rating)
+
+    # ignoring tvEpisode for user browsing
+    query = query.filter(Media.titleType != "tvEpisode")
 
     if categories:
         for cat in categories:
@@ -103,7 +106,7 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
     if search:
         query = query.filter(Media.primaryTitle.ilike(f"%{search}%"))
 
-    # --- sortowanie ---
+    # --- sorting ---
     if sort_by == "primaryTitle":
         order = asc(Media.primaryTitle) if sort_dir == "asc" else desc(Media.primaryTitle)
     elif sort_by == "averageRating":
@@ -113,7 +116,7 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
 
     query = query.order_by(order)
 
-    # --- paginacja ---
+    # --- pagination ---
     total = query.count()
     media_page = query.offset((page - 1) * page_size).limit(page_size).all()
 

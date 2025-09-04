@@ -51,7 +51,7 @@ export default function Index() {
           if (Array.isArray(d.media.genres)) {
             categories = d.media.genres;
           } else if (typeof d.media.genres === "string") {
-            categories = d.media.genres.split(",").map((c) => c.trim());
+            categories = d.media.genres.split(",").map((c:any) => c.trim());
           }
 
           return {
@@ -59,7 +59,7 @@ export default function Index() {
             title: d.media.primaryTitle,
             posterUrl: d.media.poster,
             rating: d.media.averageRating ?? 0,
-            categories: categories,
+            categories,
           };
         })
       );
