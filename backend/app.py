@@ -11,7 +11,7 @@ from threading import Timer, Thread
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_cors import CORS
 import requests
-from db.media import Media
+from db.media import get_user_media_page
 
 from db.media import get_all_genres, get_media_by_tconst
 from recommendation.knn_recommendation import train_knns, delete_cache, recommend_media
@@ -168,42 +168,9 @@ def get_index_media():
     categories = request.args.getlist('categories', None)
     search = request.args.get('search', None).strip().lower()
 
-    query = Media.query
+    media_page = get_user_media_page(page, page_size, sort_by, sort_dir, min_rating, categories, search)
 
-    # filter raating
-
-    query = query.filter(Media.averageRating >= min_rating)
-
-    # filter categories
-    if categories:
-        for cat in categories:
-            query = query.filter(Media.genres.islike(f'%{cat}%'))
-
-    # filter search
-    if search:
-        query = query.filter(Media.primaryTitle.ilike(f'%{search}%'))
-
-    # sort
-    if sort_by == "primaryTitle":
-        order = Media.primaryTitle.asc() if sort_dir == "asc" else Media.primaryTitle.desc()
-    elif sort_by == "averageRating":
-        order = Media.averageRating.asc() if sort_dir == "asc" else Media.averageRating.desc()
-    else:
-        order = Media.tconst.asc()
-    query = query.order_by(order)
-
-    # pagination
-
-    total = query.count()
-    media_page = query.offset((page - 1) * page_size).limit(page_size).all()
-
-    return jsonify({
-        "tconst": [media.tconst for media in media_page],
-        "total": total,
-        "page": page,
-        "page_size": page_size,
-        "has_more": page * page_size < total
-    }), 200
+    return jsonify(media_page), 200
 
 #Get user data
 @app.route('/user_data', methods=['POST'])

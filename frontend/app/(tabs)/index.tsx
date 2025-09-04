@@ -6,145 +6,84 @@ import {
   Pressable,
   TextInput,
 } from "react-native";
-import { useState, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import MediaCard from "../../components/mediaCard";
 
 export default function Index() {
-  // --- Mock backend-like data ---
-  const movies = [
-    {
-      id: "1",
-      title: "Inception",
-      posterUrl: "https://m.media-amazon.com/images/I/51xJ9O4ZQdL._AC_.jpg",
-      rating: 8.7,
-      categories: ["Sci-Fi", "Thriller"],
-    },
-    {
-      id: "2",
-      title: "The Matrix",
-      posterUrl: "https://m.media-amazon.com/images/I/51EG732BV3L.jpg",
-      rating: 8.6,
-      categories: ["Sci-Fi", "Action"],
-    },
-    {
-      id: "3",
-      title: "Interstellar",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/71n58u3tC7L._AC_SY679_.jpg",
-      rating: 8.5,
-      categories: ["Sci-Fi", "Drama"],
-    },
-    {
-      id: "4",
-      title: "Avatar",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/61OUGpUfAyL._AC_SY679_.jpg",
-      rating: 7.8,
-      categories: ["Sci-Fi", "Adventure"],
-    },
-    {
-      id: "5",
-      title: "The Dark Knight",
-      posterUrl: "https://m.media-amazon.com/images/I/51EbJjlY7zL._AC_.jpg",
-      rating: 9.0,
-      categories: ["Action", "Drama"],
-    },
-    {
-      id: "6",
-      title: "Fight Club",
-      posterUrl: "https://m.media-amazon.com/images/I/51v5ZpFyaFL._AC_.jpg",
-      rating: 8.8,
-      categories: ["Drama"],
-    },
-    {
-      id: "7",
-      title: "Pulp Fiction",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/71c05lTE03L._AC_SY679_.jpg",
-      rating: 8.9,
-      categories: ["Crime", "Drama"],
-    },
-    {
-      id: "8",
-      title: "Avengers: Endgame",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/81ExhpBEbHL._AC_SY679_.jpg",
-      rating: 8.4,
-      categories: ["Action", "Adventure", "Sci-Fi"],
-    },
-    {
-      id: "9",
-      title: "The Lion King",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/81s6DUyQCZL._AC_SY679_.jpg",
-      rating: 8.5,
-      categories: ["Animation", "Drama"],
-    },
-    {
-      id: "10",
-      title: "Forrest Gump",
-      posterUrl:
-        "https://m.media-amazon.com/images/I/61+z4vtpWML._AC_SY741_.jpg",
-      rating: 8.8,
-      categories: ["Drama", "Romance"],
-    },
-  ];
-
-  const allCategories = Array.from(new Set(movies.flatMap((m) => m.categories)));
-
   const { width } = useWindowDimensions();
   const numColumns = 4;
   const cardWidth = width / numColumns - 20;
 
   // --- State ---
-  const [sortBy, setSortBy] = useState<"title" | "rating">("title");
+  const [movies, setMovies] = useState<any[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<"primaryTitle" | "averageRating">("primaryTitle");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [filterMinRating, setFilterMinRating] = useState<number>(0);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [search, setSearch] = useState<string>("");
   const [page, setPage] = useState<number>(1);
-  const pageSize = 6;
+  const [hasMore, setHasMore] = useState<boolean>(true);
+  const pageSize = 8;
 
-  // --- Filter + Sort + Paginate ---
-  const processedMovies = useMemo(() => {
-    let list = [...movies];
+  // --- Fetch list of movie IDs + details ---
+  const fetchMovies = useCallback(async () => {
+    try {
+      const query = new URLSearchParams({
+        page: page.toString(),
+        page_size: pageSize.toString(),
+        sort_by: sortBy,
+        sort_dir: sortDir,
+        min_rating: filterMinRating.toString(),
+        search,
+      });
+      selectedCategories.forEach((cat) => query.append("categories", cat));
 
-    // Rating filter
-    list = list.filter((movie) => movie.rating >= filterMinRating);
+      const res = await fetch(`http://localhost:5000/media?${query}`);
+      const data = await res.json();
 
-    // Category filter
-    if (
-      selectedCategories.length > 0 &&
-      selectedCategories.length !== allCategories.length
-    ) {
-      list = list.filter((movie) =>
-        movie.categories.some((c) => selectedCategories.includes(c))
+      const details = await Promise.all(
+        data.ids.map(async (id: string) => {
+          const r = await fetch(`http://localhost:5000/media/${id}`);
+          const d = await r.json();
+
+          let categories: string[] = [];
+          if (Array.isArray(d.media.genres)) {
+            categories = d.media.genres;
+          } else if (typeof d.media.genres === "string") {
+            categories = d.media.genres.split(",").map((c) => c.trim());
+          }
+
+          return {
+            id: d.media.tconst,
+            title: d.media.primaryTitle,
+            posterUrl: d.media.poster,
+            rating: d.media.averageRating ?? 0,
+            categories: categories,
+          };
+        })
       );
+
+      setMovies((prev) => (page === 1 ? details : [...prev, ...details]));
+      setHasMore(data.has_more);
+
+      // kategorie (lokalnie)
+      if (page === 1) {
+        const allCats = Array.from(new Set(details.flatMap((m) => m.categories)));
+        setAllCategories(allCats);
+      }
+    } catch (err) {
+      console.error(err);
     }
+  }, [page, sortBy, sortDir, filterMinRating, selectedCategories, search]);
 
-    // Search filter
-    if (search.trim().length > 0) {
-      list = list.filter((movie) =>
-        movie.title.toLowerCase().includes(search.toLowerCase())
-      );
-    }
+  useEffect(() => {
+    setPage(1); // reset with change of filters
+  }, [sortBy, sortDir, filterMinRating, selectedCategories, search]);
 
-    // Sort
-    if (sortBy === "title") {
-      list.sort((a, b) =>
-        sortDir === "asc"
-          ? a.title.localeCompare(b.title)
-          : b.title.localeCompare(a.title)
-      );
-    } else if (sortBy === "rating") {
-      list.sort((a, b) =>
-        sortDir === "asc" ? a.rating - b.rating : b.rating - a.rating
-      );
-    }
-
-    // Pagination
-    return list.slice(0, page * pageSize);
-  }, [movies, sortBy, sortDir, filterMinRating, selectedCategories, search, page]);
+  useEffect(() => {
+    fetchMovies();
+  }, [fetchMovies, page]);
 
   // --- Handlers ---
   const toggleCategory = (cat: string) => {
@@ -157,18 +96,18 @@ export default function Index() {
 
   const toggleAllCategories = () => {
     if (selectedCategories.length === allCategories.length) {
-      setSelectedCategories([]); // clear
+      setSelectedCategories([]);
     } else {
-      setSelectedCategories(allCategories); // select all
+      setSelectedCategories(allCategories);
     }
   };
 
-  const toggleSort = (field: "title" | "rating") => {
+  const toggleSort = (field: "primaryTitle" | "averageRating") => {
     if (sortBy === field) {
-      setSortDir(sortDir === "asc" ? "desc" : "asc"); // flip direction
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
     } else {
       setSortBy(field);
-      setSortDir("asc"); // default ascending
+      setSortDir("asc");
     }
   };
 
@@ -212,27 +151,23 @@ export default function Index() {
           backgroundColor: "white",
         }}
       >
-        <Pressable onPress={() => toggleSort("title")}>
-          <Text style={{ color: sortBy === "title" ? "#007AFF" : "black" }}>
-            {sortBy === "title" && sortDir === "asc" ? "Sort A–Z" : "Sort Z–A"}
+        <Pressable onPress={() => toggleSort("primaryTitle")}>
+          <Text style={{ color: sortBy === "primaryTitle" ? "#007AFF" : "black" }}>
+            {sortBy === "primaryTitle" && sortDir === "asc" ? "Sort A–Z" : "Sort Z–A"}
           </Text>
         </Pressable>
-        <Pressable onPress={() => toggleSort("rating")}>
-          <Text style={{ color: sortBy === "rating" ? "#007AFF" : "black" }}>
+        <Pressable onPress={() => toggleSort("averageRating")}>
+          <Text style={{ color: sortBy === "averageRating" ? "#007AFF" : "black" }}>
             Rating:
-            {sortBy === "rating" && sortDir === "desc"
+            {sortBy === "averageRating" && sortDir === "desc"
               ? " Top → Least"
               : " Least → Top"}
           </Text>
         </Pressable>
         <Pressable
-          onPress={() =>
-            setFilterMinRating((prev) => (prev === 8 ? 0 : 8))
-          }
+          onPress={() => setFilterMinRating((prev) => (prev === 8 ? 0 : 8))}
         >
-          <Text
-            style={{ color: filterMinRating === 8 ? "#007AFF" : "black" }}
-          >
+          <Text style={{ color: filterMinRating === 8 ? "#007AFF" : "black" }}>
             {filterMinRating === 8 ? "All ratings" : "Filter ≥ 8"}
           </Text>
         </Pressable>
@@ -283,7 +218,7 @@ export default function Index() {
 
       {/* Movie Grid */}
       <FlatList
-        data={processedMovies}
+        data={movies}
         keyExtractor={(item) => item.id}
         numColumns={numColumns}
         columnWrapperStyle={{ justifyContent: "flex-start" }}
@@ -301,16 +236,7 @@ export default function Index() {
       />
 
       {/* Paging */}
-      {processedMovies.length <
-        movies.filter(
-          (m) =>
-            m.rating >= filterMinRating &&
-            (selectedCategories.length === 0 ||
-              selectedCategories.length === allCategories.length ||
-              m.categories.some((c) => selectedCategories.includes(c))) &&
-            (search.trim().length === 0 ||
-              m.title.toLowerCase().includes(search.toLowerCase()))
-        ).length && (
+      {hasMore && (
         <Pressable
           onPress={() => setPage((p) => p + 1)}
           style={{

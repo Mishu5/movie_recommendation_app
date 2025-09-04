@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, asc, desc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from db.models import Media
@@ -83,4 +83,49 @@ def add_review(tconst, averageRating, numVotes):
     media.numVotes = numVotes
     session.commit()
     session.close()
+
+def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="asc",
+                   min_rating=0, categories=None, search=""):
     
+    if page < 1:
+        page = 1
+
+    session = Session()
+    query = session.query(Media)
+
+    # --- filtrowanie ---
+    query = query.filter(Media.averageRating >= min_rating)
+
+    if categories:
+        for cat in categories:
+            query = query.filter(Media.genres.ilike(f"%{cat}%"))
+
+    if search:
+        query = query.filter(Media.primaryTitle.ilike(f"%{search}%"))
+
+    # --- sortowanie ---
+    if sort_by == "primaryTitle":
+        order = asc(Media.primaryTitle) if sort_dir == "asc" else desc(Media.primaryTitle)
+    elif sort_by == "averageRating":
+        order = asc(Media.averageRating) if sort_dir == "asc" else desc(Media.averageRating)
+    else:
+        order = asc(Media.tconst)
+
+    query = query.order_by(order)
+
+    # --- paginacja ---
+    total = query.count()
+    media_page = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    has_more = (page * page_size) < total
+
+    result = {
+        "ids": [m.tconst for m in media_page],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "has_more": has_more
+    }
+
+    session.close()
+    return result
