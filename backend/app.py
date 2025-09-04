@@ -10,6 +10,7 @@ import random
 from threading import Timer, Thread
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_cors import CORS
+import requests
 
 from db.media import get_all_genres, get_media_by_tconst
 from recommendation.knn_recommendation import train_knns, delete_cache, recommend_media
@@ -20,6 +21,7 @@ rooms = {} #List of rooms that users can interact with
 app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
 K_RECOMMENDATION = int(os.getenv("K_RECOMMENDATION", 50))
+API_KEY = os.getenv("IMDB_API_KEY")
 socketio = SocketIO(app, cors_allowed_origins="*") #creating socketio instance
 CORS(app, resources={r"/*": {"origins": "*"}}) #Enable CORS for all routes
 
@@ -103,6 +105,13 @@ def generate_jwt(email):
         algorithm="HS256"
     )
     return token
+
+def get_media_poster_url(tconst):
+    url = f"http://www.omdbapi.com/?i={tconst}&apikey={API_KEY}"
+    response = requests.get(url)
+    data = requests.json()
+    poster_url = data.get("Poster", "")
+    return poster_url
 
 @app.route('/')
 def hello_world():
@@ -389,6 +398,8 @@ def get_media(tconst):
     if not media:
         return jsonify({"message": "Media not found"}), 404
     
+    poster = get_media_poster_url(tconst)
+
     media_data = {
         "tconst": media.tconst,
         "titleType": media.titleType,
@@ -398,7 +409,8 @@ def get_media(tconst):
         "startYear": media.startYear,
         "endYear": media.endYear,
         "runtimeMinutes": media.runtimeMinutes,
-        "genres": media.genres
+        "genres": media.genres,
+        "poster": poster
     }
     return jsonify({"media": media_data}), 200
 

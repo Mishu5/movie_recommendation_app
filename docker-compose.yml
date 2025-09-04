@@ -11,6 +11,7 @@ services:
       - DATABASE_URL=postgresql://user:password@db:5432/mydatabase
       - SECRET_KEY=secret_key
       - K_RECOMMENDATION=50
+      - IMDB_API_KEY=b3a5e79f
     depends_on:
       - db
 
