@@ -5,3 +5,4 @@ scikit-learn
 PyJWT
 flask_socketio
 flask-cors
+requests
