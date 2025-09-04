@@ -448,6 +448,8 @@ def get_media(tconst):
         "isAdult": media.isAdult,
         "startYear": media.startYear,
         "endYear": media.endYear,
+        "averageRating": media.averageRating,
+        "numVotes": media.numVotes,
         "runtimeMinutes": media.runtimeMinutes,
         "genres": media.genres,
         "poster": poster

@@ -99,12 +99,18 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
     # ignoring tvEpisode for user browsing
     query = query.filter(Media.titleType != "tvEpisode")
 
+    #ignoring media with no number of votes
+    query = query.filter(Media.numVotes > 0)
+
     if categories:
         for cat in categories:
-            query = query.filter(Media.genres.ilike(f"%{cat}%"))
+            query = query.filter(Media.genres.islike(f"%{cat}%"))
 
     if search:
-        query = query.filter(Media.primaryTitle.ilike(f"%{search}%"))
+        query = query.filter(Media.primaryTitle.islike(f"%{search}%"))
+
+    # popular media on top
+    query = query.order_by(desc(Media.numVotes))
 
     # --- sorting ---
     if sort_by == "primaryTitle":
@@ -114,7 +120,7 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
     else:
         order = asc(Media.tconst)
 
-    query = query.order_by(order)
+    query = query.order_by(desc(Media.numVotes), order)
 
     # --- pagination ---
     total = query.count()

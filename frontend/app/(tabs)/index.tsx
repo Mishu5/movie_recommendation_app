@@ -59,6 +59,7 @@ export default function Index() {
             title: d.media.primaryTitle,
             posterUrl: d.media.poster,
             rating: d.media.averageRating ?? 0,
+            numVotes: d.media.numVotes ?? 0,
             categories,
           };
         })
@@ -67,7 +68,7 @@ export default function Index() {
       setMovies((prev) => (page === 1 ? details : [...prev, ...details]));
       setHasMore(data.has_more);
 
-      // kategorie (lokalnie)
+      // categories for filter chips
       if (page === 1) {
         const allCats = Array.from(new Set(details.flatMap((m) => m.categories)));
         setAllCategories(allCats);
