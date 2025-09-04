@@ -11,6 +11,7 @@ from threading import Timer, Thread
 from flask_socketio import SocketIO, join_room, leave_room, send, emit
 from flask_cors import CORS
 import requests
+from db.media import Media
 
 from db.media import get_all_genres, get_media_by_tconst
 from recommendation.knn_recommendation import train_knns, delete_cache, recommend_media
@@ -155,6 +156,78 @@ def login():
     token = generate_jwt(email)
 
     return jsonify({"message": "Login sucessful", "jwt": token}), 200
+
+#Get movies for index
+@app.route('/media', methods=['GET'])
+def get_index_media():
+    page = int(request.args.get('page', 1))
+    page_size = int(request.args.get('page_size', 6))
+    sort_by = request.args.get('sort_by', 'title')
+    sort_dir = request.args.get('sort_dir', 'asc')
+    min_rating = float(request.args.get('min_rating', 0))
+    categories = request.args.getlist('categories', None)
+    search = request.args.get('search', None).strip().lower()
+
+    query = Media.query
+
+    # filter raating
+
+    query = query.filter(Media.averageRating >= min_rating)
+
+    # filter categories
+    if categories:
+        for cat in categories:
+            query = query.filter(Media.genres.islike(f'%{cat}%'))
+
+    # filter search
+    if search:
+        query = query.filter(Media.primaryTitle.ilike(f'%{search}%'))
+
+    # sort
+    if sort_by == "primaryTitle":
+        order = Media.primaryTitle.asc() if sort_dir == "asc" else Media.primaryTitle.desc()
+    elif sort_by == "averageRating":
+        order = Media.averageRating.asc() if sort_dir == "asc" else Media.averageRating.desc()
+    else:
+        order = Media.tconst.asc()
+    query = query.order_by(order)
+
+    # pagination
+
+    total = query.count()
+    media_page = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    return jsonify({
+        "tconst": [media.tconst for media in media_page],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "has_more": page * page_size < total
+    }), 200
+
+#Get user data
+@app.route('/user_data', methods=['POST'])
+def get_user_data():
+    data = request.get_json()
+    token = data.get('jwt')
+    user_id = None
+
+    if not token:
+        return jsonify({"message": "JWT is required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+        email = decoded_token.get('email')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if not user_id:
+        return jsonify({"message": "User not found"}), 404
+
+    return jsonify({"email": email}), 200
 
 #Add preferences
 @app.route('/preferences/add', methods=['POST'])
