@@ -109,7 +109,7 @@ def generate_jwt(email):
 def get_media_poster_url(tconst):
     url = f"http://www.omdbapi.com/?i={tconst}&apikey={API_KEY}"
     response = requests.get(url)
-    data = requests.json()
+    data = response.json()
     poster_url = data.get("Poster", "")
     return poster_url
 
