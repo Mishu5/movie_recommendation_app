@@ -227,6 +227,34 @@ def add_preference():
     else:
         return jsonify({"message": "Error adding preference"}), 500
 
+#Delete preferences
+@app.route('/preferences/delete', methods=['POST'])
+def delete_preference():
+    data = request.get_json()
+    token = data.get('jwt')
+    tconst = data.get('tconst')
+    user_id = None
+
+    if not token:
+        return jsonify({"message": "JWT is required"}), 400
+    if not tconst:
+        return jsonify({"message": "tconst is required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    res = delete_preference(user_id, tconst)
+    
+    if res:
+        return jsonify({"message": "Preference deleted"}), 200
+    else:
+        return jsonify({"message": "Error deleting preference"}), 500
+
 #Get all preferences 
 @app.route('/preferences/get_all', methods=['POST'])
 def get_preferences():
@@ -432,12 +460,23 @@ def get_room_recommendations():
     return jsonify({"recommended_media": rooms[room_id]["recommended_media"]}), 200
 
 #Get media details
-@app.route('/media/<tconst>', methods=['GET'])
-def get_media(tconst):
+@app.route('/media/<tconst>', methods=['POST'])
+def get_media_for_user(tconst):
     media = get_media_by_tconst(tconst)
     if not media:
         return jsonify({"message": "Media not found"}), 404
     
+    jwt = request.get_json().get('jwt')
+    user_id = verify_jwt(jwt)
+
+    user_rating = None
+    if user_id:
+        preferences = get_user_preferences(user_id)
+        for pref in preferences:
+            if pref.media_id == tconst:
+                user_rating = pref.rating
+                break
+
     poster = get_media_poster_url(tconst)
 
     media_data = {
@@ -452,7 +491,8 @@ def get_media(tconst):
         "numVotes": media.numVotes,
         "runtimeMinutes": media.runtimeMinutes,
         "genres": media.genres,
-        "poster": poster
+        "poster": poster,
+        "user_rating": user_rating
     }
     return jsonify({"media": media_data}), 200
 

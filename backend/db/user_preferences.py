@@ -36,6 +36,18 @@ def add_and_update_user_preference(user_id, tconst, rating):
         session.close()
         return False
 
+def delete_user_preference(user_id, tconst):
+    session = Session()
+    user_preference = session.query(UserPreference).filter(UserPreference.user_id == user_id, UserPreference.tconst == tconst).first()
+    if user_preference:
+        session.delete(user_preference)
+        session.commit()
+    else:
+        session.close()
+        return False
+    session.close()
+    return True
+
 def update_user_preference(user_id, tconst, rating):
     session = Session()
     user_preference = session.query(UserPreference).filter(UserPreference.user_id == user_id, UserPreference.tconst == tconst).first()

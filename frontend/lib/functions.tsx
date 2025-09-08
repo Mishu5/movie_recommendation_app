@@ -27,6 +27,31 @@ export async function addPreference(tconst: string, rating: number) {
   }
 }
 
+export async function removePreference(tconst: string) {
+  if (!tconst) {
+    return { success: false, message: "Movie ID is required." };
+  }
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." }; 
+    
+    const repsonse = await fetch(API_URL + "preferences/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt, tconst }),
+    });
+
+    const data = await repsonse.json();
+    if (repsonse.ok) {
+      return { success: true, message: data.message };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}
+
 export async function getPreferences() {
   try {
     const jwt = await AsyncStorage.getItem("jwt");

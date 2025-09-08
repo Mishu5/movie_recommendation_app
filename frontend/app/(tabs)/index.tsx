@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import MediaCard from "../../components/mediaCard";
+import { addPreference, removePreference } from "../../lib/functions";
 
 export default function Index() {
   const { width } = useWindowDimensions();
@@ -112,11 +113,23 @@ export default function Index() {
     }
   };
 
-  const handleRate = (id: string, userRating: number) => {
+  const handleRate = async (id: string, userRating: number) => {
+    const result = await addPreference(id, userRating);
+    if (!result.success) {
+      console.error("Failed to add preference:", result.message);
+    } else {
+      console.log("Preference added:", result.message);
+    }
     console.log(`User rated movie ${id} with ${userRating}`);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const result = await removePreference(id);
+    if (!result.success) {
+      console.error("Failed to remove preference:", result.message);
+    } else {
+      console.log("Preference removed:", result.message);
+    } 
     console.log(`User deleted rating for movie ${id}`);
   };
 
