@@ -15,7 +15,7 @@ from db.media import get_user_media_page
 
 from db.media import get_all_genres, get_media_by_tconst
 from recommendation.knn_recommendation import train_knns, delete_cache, recommend_media
-from db.user_preferences import add_and_update_user_preference, get_user_preferences
+from db.user_preferences import add_and_update_user_preference, get_user_preferences, delete_user_preference
 
 rooms = {} #List of rooms that users can interact with
 
@@ -248,7 +248,7 @@ def delete_preference():
     except jwt.InvalidTokenError:
         return jsonify({"message": "Invalid token"}), 401
 
-    res = delete_preference(user_id, tconst)
+    res = delete_user_preference(user_id, tconst)
     
     if res:
         return jsonify({"message": "Preference deleted"}), 200

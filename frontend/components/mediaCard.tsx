@@ -1,11 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, Image, Pressable } from "react-native";
+
 
 type MediaCardProps = {
   id: string;
   title: string;
   posterUrl: string;
   rating: number;
+  userRating?: number | null;
   onRate: (id: string, userRating: number) => void;
   onDelete: (id: string) => void;
 };
@@ -15,10 +17,15 @@ export default function MediaCard({
   title,
   posterUrl,
   rating,
+  userRating: initialUserRating,
   onRate,
   onDelete,
 }: MediaCardProps) {
   const [userRating, setUserRating] = useState<number | null>(null);
+
+  useEffect(() => {
+    setUserRating(initialUserRating ?? null);
+  }, [initialUserRating]);
 
   const handleRate = (value: number) => {
     setUserRating(value);

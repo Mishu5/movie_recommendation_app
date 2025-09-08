@@ -9,6 +9,7 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import MediaCard from "../../components/mediaCard";
 import { addPreference, removePreference } from "../../lib/functions";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Index() {
   const { width } = useWindowDimensions();
@@ -43,9 +44,18 @@ export default function Index() {
       const res = await fetch(`http://localhost:5000/media?${query}`);
       const data = await res.json();
 
+      // fetch details for movie with user rating if logged in
+      const jwt = await AsyncStorage.getItem("jwt");
+
       const details = await Promise.all(
         data.ids.map(async (id: string) => {
-          const r = await fetch(`http://localhost:5000/media/${id}`);
+          const r = await fetch(`http://localhost:5000/media/${id}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ jwt }),
+            }
+          );
           const d = await r.json();
 
           let categories: string[] = [];
@@ -54,7 +64,7 @@ export default function Index() {
           } else if (typeof d.media.genres === "string") {
             categories = d.media.genres.split(",").map((c:any) => c.trim());
           }
-
+          console.log(d.media.user_rating);
           return {
             id: d.media.tconst,
             title: d.media.primaryTitle,
@@ -62,6 +72,7 @@ export default function Index() {
             rating: d.media.averageRating ?? 0,
             numVotes: d.media.numVotes ?? 0,
             categories,
+            userRating: d.media.user_rating ?? null,
           };
         })
       );
