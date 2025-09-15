@@ -28,6 +28,24 @@ def add_user(email, password):
         session.close()
     return True
 
+def update_user_password(email, new_password):
+    session = Session()
+    user = get_user(email)
+
+    if not user:
+        session.close()
+        return False
+
+    try:
+        user.password = new_password
+        session.commit()
+        print(f"Password for {email} updated.")
+    except Exception as e:
+        session.rollback()
+        print(f"Error updating password: {e}")
+    finally:
+        session.close()
+    return True
 
 def get_user(email):
     session = Session()

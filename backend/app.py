@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from db.create_tables import create_tables, check_and_add_media, check_and_add_reviews, check_and_add_creators
-from db.users import add_user, get_user
+from db.users import add_user, get_user, update_user_password
 import os
 import jwt
 import datetime
@@ -157,6 +157,43 @@ def login():
 
     return jsonify({"message": "Login sucessful", "jwt": token}), 200
 
+@app.route('/auth/change_password', methods=['POST'])
+def change_password():
+    data = request.get_json()
+    token = data.get('jwt')
+    new_password = data.get('new_password')
+    user_id = None
+
+    if not token or not old_password or not new_password:
+        return jsonify({"message": "JWT and new password are required"}), 400
+    
+    try:
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')
+        email = decoded_token.get('email')
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token"}), 401
+
+    if not user_id:
+        return jsonify({"message": "User not found"}), 404
+
+    #getting user
+    user = get_user(email)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    #hashing new password
+    hashed_new_password = hashlib.sha256(new_password.encode()).hexdigest()
+    
+    res = update_user_password(email, hashed_new_password)
+
+    if res:
+        return jsonify({"message": "Password changed successfully"}), 200
+    return jsonify({"message": "Error changing password"}), 500
+
 #Get movies for index
 @app.route('/media', methods=['GET'])
 def get_index_media():
@@ -275,6 +312,8 @@ def get_preferences():
 
     res = get_user_preferences(user_id)
     
+    res = [{"tconst": pref.media_id} for pref in res]
+
     if res:
         return jsonify({"preferences": res}), 200
     else:

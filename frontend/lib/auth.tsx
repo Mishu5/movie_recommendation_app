@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const API_URL = "http://localhost:5000/";
 
 export async function handleLogin(
@@ -50,6 +51,33 @@ export async function handleRegister(
       return { success: false, message: data.message || "Register failed." };
     }
   } catch (error) {
+    return { success: false, message: "Network error." };
+  }
+}
+
+export async function handleChangePassword(
+  newPassword: string
+): Promise<{ success: boolean; message?: string }> {
+  if (!newPassword) {
+    return { success: false, message: "New password is required." };
+  }
+  
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." };
+    const response = await fetch(API_URL + "auth/change_password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt, new_password: newPassword }),
+    } );  
+  
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, message: data.message };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
     return { success: false, message: "Network error." };
   }
 }

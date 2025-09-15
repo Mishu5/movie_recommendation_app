@@ -8,38 +8,72 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import MediaCard from "../../components/mediaCard";
+import { getPreferences, getMovieDetails } from "../../lib/functions";
+import { handleChangePassword } from "../../lib/auth";
 
 export default function UserPanel() {
   const { width } = useWindowDimensions();
   const numColumns = 3;
   const cardWidth = width / numColumns - 20;
 
-  // --- Mock user data ---
   const [username] = useState("JohnDoe");
-
-  // --- Password change ---
   const [newPassword, setNewPassword] = useState("");
 
-  // --- Search + paging (same pattern as Index) ---
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 6;
 
-  // --- Mock rated media ---
-  const ratedMovies = [
-    { id: "1",  title: "Inception",           posterUrl: "https://m.media-amazon.com/images/I/51xJ9O4ZQdL._AC_.jpg", rating: 9,  categories: ["Sci-Fi", "Thriller"] },
-    { id: "2",  title: "The Dark Knight",     posterUrl: "https://m.media-amazon.com/images/I/51EbJjlY7zL._AC_.jpg", rating: 10, categories: ["Action", "Drama"] },
-    { id: "3",  title: "Interstellar",        posterUrl: "https://m.media-amazon.com/images/I/71n58u3tC7L._AC_SY679_.jpg", rating: 8,  categories: ["Sci-Fi", "Drama"] },
-    { id: "4",  title: "Avatar",              posterUrl: "https://m.media-amazon.com/images/I/61OUGpUfAyL._AC_SY679_.jpg", rating: 7,  categories: ["Sci-Fi", "Adventure"] },
-    { id: "5",  title: "The Matrix",          posterUrl: "https://m.media-amazon.com/images/I/51EG732BV3L.jpg", rating: 9,  categories: ["Sci-Fi", "Action"] },
-    { id: "6",  title: "Titanic",             posterUrl: "https://m.media-amazon.com/images/I/71n58u3tC7L._AC_SY679_.jpg", rating: 8,  categories: ["Drama", "Romance"] },
-    { id: "7",  title: "Joker",               posterUrl: "https://m.media-amazon.com/images/I/51EbJjlY7zL._AC_.jpg", rating: 8,  categories: ["Drama", "Thriller"] },
-    { id: "8",  title: "Forrest Gump",        posterUrl: "https://m.media-amazon.com/images/I/61+z4vtpWML._AC_SY741_.jpg", rating: 9,  categories: ["Drama", "Romance"] },
-    { id: "9",  title: "Pulp Fiction",        posterUrl: "https://m.media-amazon.com/images/I/71c05lTE03L._AC_SY679_.jpg", rating: 9,  categories: ["Crime", "Drama"] },
-    { id: "10", title: "The Lion King",       posterUrl: "https://m.media-amazon.com/images/I/81s6DUyQCZL._AC_SY679_.jpg", rating: 8,  categories: ["Animation", "Drama"] },
-  ];
+  const [ratedMovies, setRatedMovies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // fetching movie preferences
+  useEffect(() => {
+    const fetchUserPreferences = async () => {
+      setLoading(true);
+      const result = await getPreferences();
+      if (!result.success) {
+        console.warn("Error getting preferences:", result.message);
+        setLoading(false);
+        return;
+      }
+
+      const ids = result.preferences.map((p: any) => p.tconst);
+
+      console.log("Fetched preferences:", ids);
+
+      const details = await Promise.all(
+        ids.map(async (id: string) => {
+          const res = await getMovieDetails(id);
+          if (!res.success || !res.movie) return null;
+          const d = res.movie;
+
+          let categories: string[] = [];
+          if (Array.isArray(d.genres)) {
+            categories = d.genres;
+          } else if (typeof d.genres === "string") {
+            categories = d.genres.split(",").map((c:any) => c.trim());
+          }
+
+          return {
+            id: d.tconst,
+            title: d.primaryTitle,
+            posterUrl: d.poster,
+            rating: d.averageRating ?? 0,
+            numVotes: d.numVotes ?? 0,
+            categories,
+            userRating: d.user_rating ?? null,
+          };
+        })
+      );
+
+      setRatedMovies(details.filter(Boolean));
+      setLoading(false);
+    };
+
+    fetchUserPreferences();
+  }, []);
 
   const handleUpdatePassword = () => {
     if (!newPassword.trim()) {
@@ -50,14 +84,12 @@ export default function UserPanel() {
     Alert.alert("Success", "Password updated!");
   };
 
-  // --- Filtering + "Load More" pagination (identical approach) ---
-  const filtered = useMemo(
-    () =>
-      ratedMovies.filter((m) =>
-        m.title.toLowerCase().includes(search.toLowerCase())
-      ),
-    [ratedMovies, search]
-  );
+  // filtering and pagination
+  const filtered = useMemo(() => {
+    return ratedMovies.filter((m) =>
+      m.title.toLowerCase().includes(search.toLowerCase())
+    );
+  }, [ratedMovies, search]);
 
   const processed = useMemo(
     () => filtered.slice(0, page * pageSize),
@@ -66,9 +98,13 @@ export default function UserPanel() {
 
   const canLoadMore = processed.length < filtered.length;
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#f8f8f8" }}>
-      {/* Settings card */}
+return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: "#f8f8f8" }}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      nestedScrollEnabled
+    >
+      {/* Settings */}
       <View
         style={{
           padding: 15,
@@ -80,9 +116,7 @@ export default function UserPanel() {
         <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
           Account Settings
         </Text>
-
         <Text style={{ marginBottom: 12 }}>Username: {username}</Text>
-
         <TextInput
           placeholder="Enter new password"
           value={newPassword}
@@ -116,7 +150,7 @@ export default function UserPanel() {
           value={search}
           onChangeText={(t) => {
             setSearch(t);
-            setPage(1); // reset paging on new search
+            setPage(1);
           }}
           style={{
             borderWidth: 1,
@@ -143,27 +177,27 @@ export default function UserPanel() {
         </Text>
       </View>
 
-      {/* Rated media grid (non-scrolling FlatList; ScrollView handles the scroll) */}
-      <FlatList
-        data={processed}
-        keyExtractor={(item) => item.id}
-        numColumns={numColumns}
-        scrollEnabled={false}
-        contentContainerStyle={{ padding: 10 }}
-        renderItem={({ item }) => (
-          <View style={{ width: cardWidth, margin: 5 }}>
-            <MediaCard
-              key={item.id}
-              {...item}
-              onRate={() => {}}
-              onDelete={() => {}}
-            />
-          </View>
-        )}
-      />
+      {/* Rated media grid */}
+      {loading ? (
+        <Text style={{ textAlign: "center", marginTop: 20 }}>Loading...</Text>
+      ) : (
+        <FlatList
+          data={processed}
+          keyExtractor={(item) => item.id}
+          numColumns={numColumns}
+          scrollEnabled={false}
+          nestedScrollEnabled
+          contentContainerStyle={{ padding: 10 }}
+          renderItem={({ item }) => (
+            <View style={{ width: cardWidth, margin: 5 }}>
+              <MediaCard {...item} onRate={() => {}} onDelete={() => {}} />
+            </View>
+          )}
+        />
+      )}
 
-      {/* Load More (same logic as Index) */}
-      {canLoadMore && (
+      {/* Load More */}
+      {canLoadMore && !loading && (
         <Pressable
           onPress={() => setPage((p) => p + 1)}
           style={{

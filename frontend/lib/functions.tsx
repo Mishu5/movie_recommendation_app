@@ -146,8 +146,19 @@ export async function getRecommendations(roomId: string) {
 
 // ---------- Media ----------
 export async function getMovieDetails(tconst: string) {
+
+  const jwt = await AsyncStorage.getItem("jwt");
+  if (!tconst) {
+    return { success: false, message: "Movie ID is required." };
+  }
   try {
-    const response = await fetch(API_URL + `media/${tconst}`);
+    const response = await fetch(API_URL + `media/${tconst}`,
+      {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    }
+    );
     const data = await response.json();
     if (response.ok) {
       return { success: true, movie: data.media };
