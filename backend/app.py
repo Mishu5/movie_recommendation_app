@@ -314,10 +314,7 @@ def get_preferences():
     
     res = [{"tconst": pref.media_id} for pref in res]
 
-    if res:
-        return jsonify({"preferences": res}), 200
-    else:
-        return jsonify({"message": "Error fetching preferences"}), 500
+    return jsonify({"preferences": res}), 200
 
 #Create room
 @app.route('/rooms/create', methods=['POST'])

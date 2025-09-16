@@ -169,3 +169,24 @@ export async function getMovieDetails(tconst: string) {
     return { success: false, message: "Network error." };
   }
 }
+
+// ---------- User ----------
+export async function getUserDetails() {
+  try {
+    const jwt = await AsyncStorage.getItem("jwt");
+    if (!jwt) return { success: false, message: "Not logged in." }; 
+    const response = await fetch(API_URL + "user_data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jwt }),
+    });
+    const data = await response.json();
+    if (response.ok) {
+      return { success: true, userData: data };
+    } else {
+      return { success: false, message: data.message };
+    }
+  } catch {
+    return { success: false, message: "Network error." };
+  }
+}

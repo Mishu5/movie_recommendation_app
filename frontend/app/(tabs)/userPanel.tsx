@@ -10,15 +10,15 @@ import {
 } from "react-native";
 import { useMemo, useState, useEffect } from "react";
 import MediaCard from "../../components/mediaCard";
-import { getPreferences, getMovieDetails } from "../../lib/functions";
-import { handleChangePassword } from "../../lib/auth";
+import { getPreferences, getMovieDetails, addPreference, removePreference, getUserDetails } from "../../lib/functions";
+import { handleChangePassword as changePassword } from "../../lib/auth";
 
 export default function UserPanel() {
   const { width } = useWindowDimensions();
   const numColumns = 3;
   const cardWidth = width / numColumns - 20;
 
-  const [username] = useState("JohnDoe");
+  const [username, setUsername] = useState(""); // teraz dynamicznie
   const [newPassword, setNewPassword] = useState("");
 
   const [search, setSearch] = useState("");
@@ -28,7 +28,20 @@ export default function UserPanel() {
   const [ratedMovies, setRatedMovies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // fetching movie preferences
+  // 🔹 pobranie usera
+  useEffect(() => {
+    const fetchUser = async () => {
+      const result = await getUserDetails();
+      if (result.success && result.userData?.email) {
+        setUsername(result.userData.email);
+      } else {
+        console.warn("Failed to fetch user details:", result.message);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // 🔹 pobranie preferencji
   useEffect(() => {
     const fetchUserPreferences = async () => {
       setLoading(true);
@@ -41,8 +54,6 @@ export default function UserPanel() {
 
       const ids = result.preferences.map((p: any) => p.tconst);
 
-      console.log("Fetched preferences:", ids);
-
       const details = await Promise.all(
         ids.map(async (id: string) => {
           const res = await getMovieDetails(id);
@@ -53,7 +64,7 @@ export default function UserPanel() {
           if (Array.isArray(d.genres)) {
             categories = d.genres;
           } else if (typeof d.genres === "string") {
-            categories = d.genres.split(",").map((c:any) => c.trim());
+            categories = d.genres.split(",").map((c: any) => c.trim());
           }
 
           return {
@@ -75,16 +86,21 @@ export default function UserPanel() {
     fetchUserPreferences();
   }, []);
 
-  const handleUpdatePassword = () => {
+  const handleUpdatePassword = async () => {
     if (!newPassword.trim()) {
       Alert.alert("Error", "Password cannot be empty");
       return;
     }
     setNewPassword("");
+    const result = await changePassword(newPassword);
+    if (!result.success) {
+      Alert.alert("Error", result.message || "Failed to update password");
+      return;
+    }
     Alert.alert("Success", "Password updated!");
   };
 
-  // filtering and pagination
+  // 🔹 filtrowanie i paginacja
   const filtered = useMemo(() => {
     return ratedMovies.filter((m) =>
       m.title.toLowerCase().includes(search.toLowerCase())
@@ -96,9 +112,30 @@ export default function UserPanel() {
     [filtered, page]
   );
 
+  const handleRate = async (id: string, userRating: number) => {
+    const result = await addPreference(id, userRating);
+    if (!result.success) {
+      console.error("Failed to add preference:", result.message);
+    } else {
+      console.log("Preference added:", result.message);
+    }
+    console.log(`User rated movie ${id} with ${userRating}`);
+  };
+
+  const handleDelete = async (id: string) => {
+    const result = await removePreference(id);
+    if (!result.success) {
+      console.error("Failed to remove preference:", result.message);
+    } else {
+      console.log("Preference removed:", result.message);
+    }
+    console.log(`User deleted rating for movie ${id}`);
+    setRatedMovies((prev) => prev.filter((m) => m.id !== id));
+  };
+
   const canLoadMore = processed.length < filtered.length;
 
-return (
+  return (
     <ScrollView
       style={{ flex: 1, backgroundColor: "#f8f8f8" }}
       contentContainerStyle={{ paddingBottom: 20 }}
@@ -116,7 +153,9 @@ return (
         <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 8 }}>
           Account Settings
         </Text>
-        <Text style={{ marginBottom: 12 }}>Username: {username}</Text>
+        <Text style={{ marginBottom: 12 }}>
+          Username: {username || "Loading..."}
+        </Text>
         <TextInput
           placeholder="Enter new password"
           value={newPassword}
@@ -190,7 +229,11 @@ return (
           contentContainerStyle={{ padding: 10 }}
           renderItem={({ item }) => (
             <View style={{ width: cardWidth, margin: 5 }}>
-              <MediaCard {...item} onRate={() => {}} onDelete={() => {}} />
+              <MediaCard
+                {...item}
+                onRate={handleRate}
+                onDelete={handleDelete}
+              />
             </View>
           )}
         />
