@@ -23,7 +23,7 @@ app = Flask(__name__)
 SECRET_KEY = os.getenv("SECRET_KEY")
 K_RECOMMENDATION = int(os.getenv("K_RECOMMENDATION", 50))
 API_KEY = os.getenv("IMDB_API_KEY")
-socketio = SocketIO(app, cors_allowed_origins="*") #creating socketio instance
+socketio = SocketIO(app, cors_allowed_origins="*") #creating socketio instance with CORS allowed for all origins
 CORS(app, resources={r"/*": {"origins": "*"}}) #Enable CORS for all routes
 
 
@@ -163,8 +163,8 @@ def change_password():
     token = data.get('jwt')
     new_password = data.get('new_password')
     user_id = None
-
-    if not token or not old_password or not new_password:
+    email = None
+    if not token or not new_password:
         return jsonify({"message": "JWT and new password are required"}), 400
     
     try:
@@ -191,7 +191,7 @@ def change_password():
     res = update_user_password(email, hashed_new_password)
 
     if res:
-        return jsonify({"message": "Password changed successfully"}), 200
+        return jsonify({"message": f"Password changed successfully for user {email}"}), 200
     return jsonify({"message": "Error changing password"}), 500
 
 #Get movies for index

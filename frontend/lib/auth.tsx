@@ -72,6 +72,7 @@ export async function handleChangePassword(
     } );  
   
     const data = await response.json();
+    console.log(data);
     if (response.ok) {
       return { success: true, message: data.message };
     } else {

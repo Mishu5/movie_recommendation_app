@@ -28,7 +28,7 @@ export default function UserPanel() {
   const [ratedMovies, setRatedMovies] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 🔹 pobranie usera
+  // Fetching user details
   useEffect(() => {
     const fetchUser = async () => {
       const result = await getUserDetails();
@@ -41,7 +41,7 @@ export default function UserPanel() {
     fetchUser();
   }, []);
 
-  // 🔹 pobranie preferencji
+  // Fetching preferences
   useEffect(() => {
     const fetchUserPreferences = async () => {
       setLoading(true);
@@ -100,7 +100,7 @@ export default function UserPanel() {
     Alert.alert("Success", "Password updated!");
   };
 
-  // 🔹 filtrowanie i paginacja
+  // Filtering and pagination
   const filtered = useMemo(() => {
     return ratedMovies.filter((m) =>
       m.title.toLowerCase().includes(search.toLowerCase())
