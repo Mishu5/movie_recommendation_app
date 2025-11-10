@@ -424,6 +424,8 @@ def handle_leave(data):
     
     if room_id in rooms and user_id in rooms[room_id]["members"]:
         leave_room(room_id)
+        #Delete user from room members
+        rooms[room_id]["members"].remove(user_id)
         print(f'User has left the room: {room_id}')
 
 #Handle start room
@@ -544,14 +546,6 @@ def create_recommendation_list(members):
             if item not in seen:
                 seen.add(item)
                 recommendation_list.append(item)
-
-
-    #testing purpose
-    for item in media_list:
-        if item not in seen:
-            seen.add(item)
-            recommendation_list.append(item)
-
     return recommendation_list
 
 def create_recommendation_for_member(member_id):
