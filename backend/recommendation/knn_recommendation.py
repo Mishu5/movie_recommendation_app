@@ -121,6 +121,8 @@ def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
 
     if total_weight > 0:
         user_profile /= total_weight
+        # Normalize user profile
+        user_profile = user_profile / np.max(user_profile)
 
     distances, indices = genre_knn.kneighbors([user_profile], n_neighbors=k)
 
