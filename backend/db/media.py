@@ -138,3 +138,16 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
 
     session.close()
     return result
+
+def get_most_pupular_media(limit=10):
+    session = Session()
+    query = session.quert(Media)
+    #ignoring tvEpisode
+    query = query.filter(Media.titleType != "tvEpisode")
+    #ignoring media with no number of votes
+    query = query.filter(Media.numVotes > 0)
+    #popular media on top
+    query = query.order_by(desc(Media.numVotes))
+    media = query.limit(limit).all()
+    session.close()
+    return media

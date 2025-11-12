@@ -84,20 +84,29 @@ def train_knns():
 
 def recommend_media(user_id, k=5):
     user_preferences = db.user_preferences.get_user_preferences(user_id)
+
+    #Cold start: no preferences
+    if not user_preferences:
+        popular_media = db.media.get_most_pupular_media(limit=k)
+        media = [m.tconst for m in popular_media]
+        distances = [0] * len(media)
+        return media, distances
+
     media, distances = recommend_media_based_on_genre(user_preferences, k)
     return media, distances
 
 
 def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
-    #add if nothing in user_preferences
     
     #features
     global genre_knn
     if not genre_knn:
         return [], []
     
-    _, media_ids, all_genres, genre_index = load_from_cache_genre()
+    if not user_preferences:
+        return [], []
 
+    _, media_ids, all_genres, genre_index = load_from_cache_genre()
     user_profile = np.zeros(len(all_genres))
     total_weight = 0
 
