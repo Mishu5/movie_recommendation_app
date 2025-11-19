@@ -34,7 +34,6 @@ def delete_cache():
         print(f"Cache file {CACHE_FILE} does not exist.")
 
 def get_media_features_for_genres():
-
     media_list = None
     all_genres = db.media.get_all_genres()
     genre_index = {genre: idx for idx, genre in enumerate(all_genres)}
@@ -42,14 +41,15 @@ def get_media_features_for_genres():
     page = 0
     media_genre_features = []
 
+    # Load from cache if exists
     if os.path.exists(CACHE_FILE):
         print(f"Loading media features from cache file {CACHE_FILE}")
         media_genre_features, media_ids, all_genres, genre_index = load_from_cache_genre()
         return media_genre_features, media_ids
 
+    # Loop through pages of media
     while True:
-
-        media_list = db.media.get_media_page(page, PAGE_SIZE , 0)
+        media_list = db.media.get_media_page(page, PAGE_SIZE, 0)
         if not media_list:
             break
 
@@ -57,20 +57,27 @@ def get_media_features_for_genres():
             genre_features = [0] * len(all_genres)
             for genre in media.genres:
                 genre_features[genre_index[genre]] = 1
-            media_genre_features.append(genre_features)
+
+            # Multiply features by popularity weight (numVotes)
+            popularity_weight = np.log1p(media.numVotes) if media.numVotes else 1
+            weighted_features = [f * popularity_weight for f in genre_features]
+
+            media_genre_features.append(weighted_features)
             media_ids.append(media.tconst)
 
         page += 1
 
     media_genre_features = np.array(media_genre_features)
 
-    # Normalizing the data
+    # Optionally normalize features
     global scaler
     scaler = StandardScaler()
+    media_genre_features = scaler.fit_transform(media_genre_features)
 
     save_to_cache_genre(media_genre_features, media_ids, all_genres, genre_index)
 
     return media_genre_features, media_ids
+
 
 def train_genre_knn(media_features):
     global genre_knn
@@ -96,21 +103,17 @@ def recommend_media(user_id, k=5):
     return media, distances
 
 
+
 def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
-    
-    #features
     global genre_knn
-    if not genre_knn:
-        return [], []
-    
-    if not user_preferences:
+    if not genre_knn or not user_preferences:
         return [], []
 
     _, media_ids, all_genres, genre_index = load_from_cache_genre()
     user_profile = np.zeros(len(all_genres))
     total_weight = 0
 
-
+    # Build user profile vector
     for preference in user_preferences:
         media = db.media.get_media_by_tconst(preference.media_id)
         if media:
@@ -119,23 +122,24 @@ def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
                 genre_features[genre_index[genre]] = 1
 
             weight = preference.rating
-            # Add weights by user rating
+            # Weight features by user rating
             user_profile += genre_features * weight
             total_weight += weight
 
+            # Extra boost for popularity and average rating
             if media.averageRating:
                 user_profile += genre_features * alpha * media.averageRating
             if media.numVotes:
+                # Multiply by popularity weight
                 user_profile += genre_features * beta * np.log1p(media.numVotes)
 
     if total_weight > 0:
         user_profile /= total_weight
-        # Normalize user profile
-        user_profile = user_profile / np.max(user_profile)
+        user_profile = user_profile / np.max(user_profile)  # normalize
 
+    # Get KNN neighbors
     distances, indices = genre_knn.kneighbors([user_profile], n_neighbors=k)
 
-    #Convert knn results to list of media ids and distances
     recommended_ids = set()
     recommended_distances = []
     for idx_list, dist_list in zip(indices, distances):

@@ -69,9 +69,20 @@ def get_all_genres():
 def get_media_page(page, page_size, min_num_votes=0):
     offset = page * page_size
     session = Session()
-    media = session.query(Media).filter(Media.numVotes >= min_num_votes, Media.genres != '{}').offset(offset).limit(page_size).all()
+    media = (
+        session.query(Media)
+        .filter(
+            Media.numVotes >= min_num_votes,
+            Media.genres != '{}',
+            Media.titleType != 'tvEpisode'  # skip TV episodes
+        )
+        .offset(offset)
+        .limit(page_size)
+        .all()
+    )
     session.close()
     return media
+
 
 def add_review(tconst, averageRating, numVotes):
     session = Session()

@@ -398,7 +398,7 @@ def get_recommendations():
     if not user_id:
         return jsonify({"message": "User not found"}), 404
 
-    recommendations = recommend_media(user_id)
+    recommendations = create_recommendation_for_member(user_id)
 
     return jsonify({"recommendations": recommendations}), 200
 
