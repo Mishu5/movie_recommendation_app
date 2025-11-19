@@ -10,7 +10,7 @@ import numpy as np
 def get_categories(tconst: str):
     response = requests.post(f"http://{BASE_URL}/media/{tconst}", json={
         })
-    # print(f"{response.json().get("media", {}).get("originalTitle")}, Plot: {response.json().get("media", {}).get("plot")}")
+    print(f"{response.json().get("media", {}).get("originalTitle")}, numVotes: {response.json().get("media", {}).get("numVotes")},Plot: {response.json().get("media", {}).get("plot")}")
     genres = response.json().get("media", {}).get("genres")
     return genres
 
