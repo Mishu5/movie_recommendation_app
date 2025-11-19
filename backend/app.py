@@ -107,12 +107,13 @@ def generate_jwt(email):
     )
     return token
 
-def get_media_poster_url(tconst):
+def get_media_info(tconst):
     url = f"http://www.omdbapi.com/?i={tconst}&apikey={API_KEY}"
     response = requests.get(url)
     data = response.json()
     poster_url = data.get("Poster", "")
-    return poster_url
+    plot = data.get("Plot", "")
+    return poster_url, plot
 
 @app.route('/')
 def hello_world():
@@ -515,7 +516,7 @@ def get_media_for_user(tconst):
                 user_rating = pref.rating
                 break
 
-    poster = get_media_poster_url(tconst)
+    poster, plot = get_media_info(tconst)
 
     media_data = {
         "tconst": media.tconst,
@@ -530,7 +531,8 @@ def get_media_for_user(tconst):
         "runtimeMinutes": media.runtimeMinutes,
         "genres": media.genres,
         "poster": poster,
-        "user_rating": user_rating
+        "user_rating": user_rating,
+        "plot": plot,
     }
     return jsonify({"media": media_data}), 200
 

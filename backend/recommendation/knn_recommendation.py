@@ -59,7 +59,7 @@ def get_media_features_for_genres():
                 genre_features[genre_index[genre]] = 1
 
             # Multiply features by popularity weight (numVotes)
-            popularity_weight = np.log1p(media.numVotes) if media.numVotes else 1
+            popularity_weight = np.log1p(media.numVotes) ** 2 if media.numVotes else 1
             weighted_features = [f * popularity_weight for f in genre_features]
 
             media_genre_features.append(weighted_features)
@@ -104,7 +104,7 @@ def recommend_media(user_id, k=5):
 
 
 
-def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.2, beta=0.1):
+def recommend_media_based_on_genre(user_preferences, k=5, alpha=0.5, beta=0.1):
     global genre_knn
     if not genre_knn or not user_preferences:
         return [], []

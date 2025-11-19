@@ -5,21 +5,27 @@ import sys
 from colorama import Fore, Style, Back
 import threading
 from collections import Counter
+import numpy as np
 
 def get_categories(tconst: str):
     response = requests.post(f"http://{BASE_URL}/media/{tconst}", json={
         })
+    # print(f"{response.json().get("media", {}).get("originalTitle")}, Plot: {response.json().get("media", {}).get("plot")}")
     genres = response.json().get("media", {}).get("genres")
     return genres
 
+
 def compute_accuracy(user_counter, rec_counter):
-    if not rec_counter:
+    all_genres = set(user_counter.keys()) | set(rec_counter.keys())
+
+    user_vector = np.array([user_counter.get(g, 0) for g in all_genres])
+    rec_vector = np.array([rec_counter.get(g, 0) for g in all_genres])
+
+    if np.all(user_vector == 0) or np.all(rec_vector == 0):
         return 0.0
 
-    hits = sum(count for cat, count in rec_counter.items() if cat in user_counter)
-    total = sum(rec_counter.values())
-
-    return hits / total
+    similarity = np.dot(user_vector, rec_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(rec_vector))
+    return similarity
 
 
 class UserMedia:
@@ -57,7 +63,6 @@ class User:
         for tconst in self.media_list:
             categories = get_categories(tconst) or []
             category_counter.update(categories)
-
         return category_counter
 
     def get_user_recommendation_category_stats(self):
@@ -70,7 +75,6 @@ class User:
         for tconst in recommendation_list:
             categories = get_categories(tconst) or []
             category_counter.update(categories)
-
         return category_counter
 
 
@@ -95,6 +99,7 @@ def connect_user_socket(user: User, base_url: str):
             })
             if response.status_code == 200:
                 user.recommendations_from_room = response.json().get("recommended_media", [])
+                user.recommendations_from_room.sort()
                 print(Fore.GREEN + f"[Socket.IO] User {user.email} received recommendations in room {user.room_id}: {len(user.recommendations_from_room)}." + Style.RESET_ALL)
                 #Liking media
                 time.sleep(2)  #Wait before liking
@@ -116,7 +121,7 @@ def connect_user_socket(user: User, base_url: str):
         #Starting the room event
         user.sio.emit("message-start", {"jwt": user.jwt, "room_id": user.room_id})
 
-        time.sleep(10)  #Keep connection alive for a short period to receive events
+        time.sleep(15)  #Keep connection alive for a short period to receive events
 
     except Exception as e:
         print(Fore.RED + f"[Socket.IO] User {user.email} failed to connect to room {user.room_id}: {e}" + Style.RESET_ALL)       
@@ -394,7 +399,7 @@ if __name__ == "__main__":
         f"Room two recommendation size: {len(users[4].recommendations_from_room)}\n"
         f"Room three recommendation size: {len(users[8].recommendations_from_room)}\n")
 
-    for user in users[0:2]:
+    for user in users[0:1]:
         list_of_categories = []
         liked_genre_counter = user.get_user_category_stats()
         recommendation_genre_counter = user.get_user_recommendation_category_stats()
