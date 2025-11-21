@@ -41,7 +41,7 @@ export default function Index() {
       });
       selectedCategories.forEach((cat) => query.append("categories", cat));
 
-      const res = await fetch(`http://localhost:5000/media?${query}`);
+      const res = await fetch(`http://192.168.0.105:5000/media?${query}`);
       const data = await res.json();
 
       // fetch details for movie with user rating if logged in
@@ -49,7 +49,7 @@ export default function Index() {
 
       const details = await Promise.all(
         data.ids.map(async (id: string) => {
-          const r = await fetch(`http://localhost:5000/media/${id}`,
+          const r = await fetch(`http://192.168.0.105:5000/media/${id}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },

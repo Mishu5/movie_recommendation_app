@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, asc, desc
+from sqlalchemy import create_engine, asc, desc, func
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
 from db.models import Media
@@ -114,11 +114,10 @@ def get_user_media_page(page=1, page_size=6, sort_by="primaryTitle", sort_dir="a
     query = query.filter(Media.numVotes > 0)
 
     if categories:
-        for cat in categories:
-            query = query.filter(Media.genres.islike(f"%{cat}%"))
+        query = query.filter(Media.genres.op("&&")(categories))
 
     if search:
-        query = query.filter(Media.primaryTitle.islike(f"%{search}%"))
+        query = query.filter(Media.primaryTitle.ilike(f"%{search}%"))
 
     # popular media on top
     query = query.order_by(desc(Media.numVotes))
