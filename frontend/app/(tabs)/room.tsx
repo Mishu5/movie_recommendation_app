@@ -11,6 +11,7 @@ import {
   likeMediaSocket,
 } from "../../lib/sockets";
 import { createRoom, joinRoom, getRecommendations, getMovieDetails } from "../../lib/functions";
+import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
 
 export default function Room() {
   const [roomCode, setRoomCode] = useState("");
@@ -20,6 +21,7 @@ export default function Room() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentMovie, setCurrentMovie] = useState<any>(null);
   const [roomActive, setRoomActive] = useState(false);
+  const [finalMovie, setFinalMovie] = useState<any>(null);
 
   const roomIdRef = useRef(roomId);
   useEffect(() => {
@@ -78,8 +80,20 @@ export default function Room() {
           (error) => {
             console.error("Socket error:", error);
           },
-          (data) => {
+          async (data) => {
             console.log("Media all liked:", data);
+            try{
+              const res = await getMovieDetails(data.media_id);
+              if (res.movie){
+                setFinalMovie(res.movie);
+                console.log("Final movie data:", res.movie);
+              }else{
+                console.error("Failed to fetch final movie details:", res.message);
+              }
+            }catch(e)
+            {
+              console.error("Error parsing final movie data:", e);
+            }
           }
         );
       })
@@ -195,56 +209,96 @@ export default function Room() {
     }
   };
 
-  return (
-    <View style={{ flex: 1, padding: 20 }}>
-      {!roomId ? (
-        <>
-          <Button title="Create Room" onPress={handleCreateRoom} />
-          <TextInput
-            placeholder="Enter Room Code"
-            value={roomCode}
-            onChangeText={setRoomCode}
-            style={{
-              borderWidth: 1,
-              borderColor: "#ccc",
-              padding: 10,
-              marginVertical: 10,
-            }}
-          />
-          <Button title="Join Room" onPress={handleJoinRoom} />
-        </>
-      ) : (
-        <>
-          <Text>Room: {roomId}</Text>
-          {isCreator && !roomActive && (
-            <Button title="Start Room" onPress={handleRoomStartCommand} />
-          )}
-          <Button title="Leave Room" onPress={handleLeaveRoom} color="red" />
+return (
+  <View style={{ flex: 1, padding: 20 }}>
+    {!roomId ? (
+      <>
+        <Button title="Create Room" onPress={handleCreateRoom} />
+        <TextInput
+          placeholder="Enter Room Code"
+          value={roomCode}
+          onChangeText={setRoomCode}
+          style={{
+            borderWidth: 1,
+            borderColor: "#ccc",
+            padding: 10,
+            marginVertical: 10,
+          }}
+        />
+        <Button title="Join Room" onPress={handleJoinRoom} />
+      </>
+    ) : (
+      <>
+        <Text>Room: {roomId}</Text>
 
-          {currentMovie ? (
-            <View style={{ marginTop: 20, alignItems: "center" }}>
-              <Text style={{ fontSize: 20, fontWeight: "bold" }}>
-                {currentMovie.primaryTitle}
-              </Text>
-              {currentMovie.poster && (
-                <Image
-                  source={{ uri: currentMovie.poster }}
-                  style={{ width: 200, height: 300, marginVertical: 10 }}
-                  resizeMode="cover"
-                />
-              )}
-              <Text>{currentMovie.plot || "No description available"}</Text>
-              <View style={{ flexDirection: "row", marginTop: 20 }}>
-                <Button title="Dislike" onPress={handleDislike} />
-                <View style={{ width: 20 }} />
-                <Button title="Like" onPress={handleLike} />
-              </View>
+        {isCreator && !roomActive && (
+          <Button title="Start Room" onPress={handleRoomStartCommand} />
+        )}
+
+        <Button title="Leave Room" onPress={handleLeaveRoom} color="red" />
+
+        {finalMovie ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              marginTop: 20,
+            }}
+          >
+            <Text style={{ fontSize: 26, fontWeight: "bold", marginBottom: 20 }}>
+              Everyone chose this movie!
+            </Text>
+
+            <Text style={{ fontSize: 22, fontWeight: "bold" }}>
+              {finalMovie.primaryTitle}
+            </Text>
+
+            {finalMovie.poster && (
+              <Image
+                source={{ uri: finalMovie.poster }}
+                style={{
+                  width: 250,
+                  height: 370,
+                  marginVertical: 20,
+                }}
+                resizeMode="cover"
+              />
+            )}
+
+            <Text style={{ textAlign: "center", paddingHorizontal: 20 }}>
+              {finalMovie.plot || "Brak opisu"}
+            </Text>
+          </View>
+        ) : null}
+
+        {!finalMovie && currentMovie ? (
+          <View style={{ marginTop: 20, alignItems: "center" }}>
+            <Text style={{ fontSize: 20, fontWeight: "bold" }}>
+              {currentMovie.primaryTitle}
+            </Text>
+
+            {currentMovie.poster && (
+              <Image
+                source={{ uri: currentMovie.poster }}
+                style={{ width: 200, height: 300, marginVertical: 10 }}
+                resizeMode="cover"
+              />
+            )}
+
+            <Text>{currentMovie.plot || "No description available"}</Text>
+
+            <View style={{ flexDirection: "row", marginTop: 20 }}>
+              <Button title="Dislike" onPress={handleDislike} />
+              <View style={{ width: 20 }} />
+              <Button title="Like" onPress={handleLike} />
             </View>
-          ) : (
-            <Text style={{ marginTop: 20 }}>No more movies</Text>
-          )}
-        </>
-      )}
-    </View>
-  );
+          </View>
+        ) : !finalMovie ? (
+          <Text style={{ marginTop: 20 }}>No more movies</Text>
+        ) : null}
+      </>
+    )}
+  </View>
+);
 }
