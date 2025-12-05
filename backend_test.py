@@ -6,11 +6,12 @@ from colorama import Fore, Style, Back
 import threading
 from collections import Counter
 import numpy as np
+import math
 
 def get_categories(tconst: str):
     response = requests.post(f"http://{BASE_URL}/media/{tconst}", json={
         })
-    print(f"{response.json().get("media", {}).get("originalTitle")}, numVotes: {response.json().get("media", {}).get("numVotes")},Plot: {response.json().get("media", {}).get("plot")}")
+    #print(f"{response.json().get("media", {}).get("originalTitle")}, numVotes: {response.json().get("media", {}).get("numVotes")}")
     genres = response.json().get("media", {}).get("genres")
     return genres
 
@@ -27,6 +28,35 @@ def compute_accuracy(user_counter, rec_counter):
     similarity = np.dot(user_vector, rec_vector) / (np.linalg.norm(user_vector) * np.linalg.norm(rec_vector))
     return similarity
 
+
+def ndcg_at_k_genres(user_counter, rec_counter, k):
+    all_genres = sorted(set(user_counter.keys()) | set(rec_counter.keys()))
+
+    user_vector = np.array([user_counter.get(g, 0) for g in all_genres])
+    rec_vector  = np.array([rec_counter.get(g, 0) for g in all_genres])
+
+    if np.all(user_vector == 0) or np.all(rec_vector == 0):
+        return 0.0
+
+    ranked_indices = np.argsort(rec_vector)[::-1]
+
+    dcg = 0.0
+    for rank, idx in enumerate(ranked_indices[:k], start=1):
+        relevance = user_vector[idx]
+        dcg += relevance / math.log2(rank + 1)
+
+    ideal_indices = np.argsort(user_vector)[::-1]
+    ideal_hits = min(k, np.count_nonzero(user_vector))
+
+    idcg = 0.0
+    for rank, idx in enumerate(ideal_indices[:ideal_hits], start=1):
+        relevance = user_vector[idx]
+        idcg += relevance / math.log2(rank + 1)
+
+    if idcg == 0:
+        return 0.0
+
+    return dcg / idcg
 
 class UserMedia:
     tconst: str
@@ -399,8 +429,8 @@ if __name__ == "__main__":
         f"Room two recommendation size: {len(users[4].recommendations_from_room)}\n"
         f"Room three recommendation size: {len(users[8].recommendations_from_room)}\n")
 
-    for user in users[0:1]:
+    for user in users[0:12]:
         list_of_categories = []
         liked_genre_counter = user.get_user_category_stats()
         recommendation_genre_counter = user.get_user_recommendation_category_stats()
-        print(Fore.BLUE + f"User {user.email} accuracy: {compute_accuracy(liked_genre_counter,recommendation_genre_counter)}" + Style.RESET_ALL)
+        print(Fore.BLUE + f"User {user.email} cosinus: {compute_accuracy(liked_genre_counter,recommendation_genre_counter)}, NDCG@K: {ndcg_at_k_genres(liked_genre_counter,recommendation_genre_counter, 10)}" + Style.RESET_ALL)

@@ -109,7 +109,7 @@ def generate_jwt(email):
 
 def get_media_info(tconst):
     url = f"http://www.omdbapi.com/?i={tconst}&apikey={API_KEY}"
-    response = requests.get(url)
+    response = requests.get(url, timeout=5)
     if response.status_code != 200:
         return "", ""
     data = response.json()
